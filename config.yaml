@@ -1,0 +1,13 @@
+# GPU Monitor Configuration
+# All settings can be overridden by environment variables.
+# This file is for reference only – the script reads env vars directly.
+
+# SLACK_WEBHOOK_URL   - Slack incoming webhook for alerts
+# CHECK_INTERVAL      - Polling interval in seconds (default: 60)
+# IDLE_THRESHOLD      - Alert when utilization below this % (default: 10)
+# IDLE_MINUTES        - Minutes below threshold before alerting (default: 5)
+# ALERT_COOLDOWN      - Minutes between repeated alerts (default: 30)
+# STATUS_ACTIVE       - Report interval when active in minutes (default: 10)
+# STATUS_IDLE         - Report interval when idle in minutes (default: 30)
+# MACHINE_COLOR       - Hex color for Slack messages (auto-assigned by default)
+# LOG_FILE            - Log file path, enables rotation (default: none)
