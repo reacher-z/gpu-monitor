@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """
-Lightweight GPU Monitor with multi-channel notifications.
+Lightweight GPU Monitor with multi-channel notifications and web dashboard.
 
-Supported channels (configure via environment variables):
+Supported notification channels (configure via environment variables):
   Slack, Discord, Telegram, Email (SMTP), SMS (Twilio), iMessage (macOS only)
+
+Web dashboard:
+  Set WEB_PORT=8080 (or any port) to enable the real-time GPU dashboard.
+  Then open http://localhost:8080 in your browser.
 """
 
 import hashlib
+import http.server
 import json
 import logging
 import logging.handlers
@@ -17,6 +22,7 @@ import smtplib
 import socket
 import subprocess
 import sys
+import threading
 import time
 import urllib.parse
 import urllib.request
@@ -50,6 +56,7 @@ IDLE_MINUTES   = int(os.environ.get("IDLE_MINUTES",   "5"))
 ALERT_COOLDOWN = int(os.environ.get("ALERT_COOLDOWN", "30"))
 STATUS_ACTIVE  = int(os.environ.get("STATUS_ACTIVE",  "10"))
 STATUS_IDLE    = int(os.environ.get("STATUS_IDLE",    "30"))
+WEB_PORT       = int(os.environ.get("WEB_PORT",       "0"))   # 0 = disabled
 
 HOSTNAME = socket.gethostname().split(".")[0] or "unknown"
 
@@ -298,7 +305,6 @@ def send_imessage(plain_text: str) -> bool:
     if sys.platform != "darwin":
         logger.debug("iMessage skipped: not macOS")
         return False
-    # Text passed as argv — never interpolated into script code
     script = (
         "on run argv\n"
         "  tell application \"Messages\"\n"
@@ -338,6 +344,282 @@ def notify(slack_text: str, color: str = "") -> None:
 
 
 # ---------------------------------------------------------------------------
+# Web dashboard
+# ---------------------------------------------------------------------------
+_DASHBOARD_HTML = r"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GPU Monitor — %%HOST%%</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0b12;
+  --surface:#12121c;
+  --surface2:#18182a;
+  --border:rgba(255,255,255,.07);
+  --text:#e2e8f0;
+  --muted:#4a5568;
+  --accent:%%ACCENT%%;
+  --green:#22c55e;
+  --amber:#f59e0b;
+  --red:#ef4444;
+  --blue:#60a5fa;
+}
+body{background:var(--bg);color:var(--text);font-family:ui-monospace,'SF Mono','Cascadia Code',monospace;font-size:13px;min-height:100vh}
+
+/* ── Header ── */
+header{
+  display:flex;align-items:center;gap:14px;
+  padding:12px 20px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:10;
+  backdrop-filter:blur(8px);
+}
+.logo{font-size:14px;font-weight:700;letter-spacing:.04em;color:var(--accent)}
+.host-badge{
+  background:color-mix(in srgb,var(--accent) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
+  color:var(--accent);border-radius:6px;padding:2px 10px;font-size:11px;font-weight:600;
+}
+.spacer{flex:1}
+#live{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);transition:background .4s}
+.dot.offline{background:var(--red)}
+#clock{color:var(--muted);font-size:11px;margin-left:8px}
+
+/* ── Grid ── */
+main{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;padding:16px 20px}
+
+/* ── GPU Card ── */
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:16px 18px;
+  transition:border-color .25s,transform .15s;
+}
+.card:hover{border-color:rgba(255,255,255,.14);transform:translateY(-1px)}
+
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+.gpu-name{font-weight:600;font-size:12px;color:var(--text);line-height:1.3;max-width:220px}
+.gpu-idx{
+  background:color-mix(in srgb,var(--accent) 15%,transparent);
+  color:var(--accent);
+  border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);
+  border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;white-space:nowrap;
+}
+
+/* Stat pills row */
+.pills{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.pill{
+  flex:1;min-width:70px;
+  background:var(--surface2);border-radius:10px;padding:8px 10px;text-align:center;
+}
+.pill-val{font-size:18px;font-weight:700;line-height:1;margin-bottom:3px}
+.pill-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+
+/* Progress bars */
+.bar-row{margin-bottom:9px}
+.bar-meta{display:flex;justify-content:space-between;margin-bottom:4px;font-size:10px}
+.bar-meta .lbl{color:var(--muted)}
+.bar-meta .val{color:var(--text);font-weight:600}
+.track{height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
+.fill{height:100%;border-radius:3px;transition:width .7s cubic-bezier(.4,0,.2,1),background .5s}
+
+/* Process list */
+.procs{margin-top:12px;padding-top:11px;border-top:1px solid var(--border)}
+.procs-title{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:7px}
+.proc{display:flex;justify-content:space-between;align-items:center;padding:3px 0;gap:8px}
+.proc-name{color:var(--text);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.proc-mem{color:var(--muted);font-size:10px;white-space:nowrap}
+.no-proc{color:var(--muted);font-size:10px;font-style:italic}
+
+/* Summary bar */
+#summary{
+  margin:0 20px 4px;padding:10px 16px;
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  display:flex;gap:24px;align-items:center;flex-wrap:wrap;font-size:11px;
+}
+.sum-item{display:flex;align-items:center;gap:6px;color:var(--muted)}
+.sum-val{font-weight:700;font-size:13px}
+
+/* Loading / error */
+.loading,.error{
+  grid-column:1/-1;display:flex;align-items:center;justify-content:center;
+  gap:12px;padding:80px 0;color:var(--muted);font-size:14px;
+}
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error{color:var(--red)}
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">◈ gpu-monitor</span>
+  <span class="host-badge">%%HOST%%</span>
+  <span class="spacer"></span>
+  <span id="live"><span class="dot" id="dot"></span><span id="live-txt">connecting…</span></span>
+  <span id="clock"></span>
+</header>
+<div id="summary" style="display:none">
+  <span class="sum-item">GPUs <span class="sum-val" id="sum-gpus">—</span></span>
+  <span class="sum-item">Avg util <span class="sum-val" id="sum-util">—</span></span>
+  <span class="sum-item">Memory <span class="sum-val" id="sum-mem">—</span></span>
+  <span class="sum-item">Avg temp <span class="sum-val" id="sum-temp">—</span></span>
+  <span class="sum-item" id="sum-procs-wrap">Processes <span class="sum-val" id="sum-procs">—</span></span>
+</div>
+<main id="grid"><div class="loading"><div class="spinner"></div>Loading…</div></main>
+<script>
+function utilColor(p){return p<40?'var(--green)':p<70?'var(--amber)':'var(--red)'}
+function memColor(p){return p<60?'var(--blue)':p<80?'var(--amber)':'var(--red)'}
+function tempColor(t){return t<55?'var(--blue)':t<75?'var(--amber)':'var(--red)'}
+
+function bar(pct,colorFn){
+  const p=Math.min(100,Math.max(0,pct));
+  return `<div class="track"><div class="fill" style="width:${p}%;background:${colorFn(p)}"></div></div>`;
+}
+
+function renderCard(g,procs){
+  const mp=g.mem_total?g.mem_used/g.mem_total*100:0;
+  const pl=(procs[g.idx]||[]);
+  const procsHtml=pl.length
+    ?pl.map(p=>`<div class="proc"><span class="proc-name">${esc(p.name)}</span><span class="proc-mem">${p.mem} MiB</span></div>`).join('')
+    :'<div class="no-proc">idle</div>';
+  return `<div class="card">
+  <div class="card-header">
+    <div class="gpu-name">${esc(g.name)}</div>
+    <div class="gpu-idx">GPU ${g.idx}</div>
+  </div>
+  <div class="pills">
+    <div class="pill">
+      <div class="pill-val" style="color:${utilColor(g.util)}">${g.util}%</div>
+      <div class="pill-lbl">Util</div>
+    </div>
+    <div class="pill">
+      <div class="pill-val" style="color:${memColor(mp)}">${(g.mem_used/1024).toFixed(1)}G</div>
+      <div class="pill-lbl">/ ${(g.mem_total/1024).toFixed(0)}G</div>
+    </div>
+    <div class="pill">
+      <div class="pill-val" style="color:${tempColor(g.temp)}">${g.temp}°</div>
+      <div class="pill-lbl">Temp</div>
+    </div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-meta"><span class="lbl">Utilization</span><span class="val">${g.util}%</span></div>
+    ${bar(g.util,utilColor)}
+  </div>
+  <div class="bar-row">
+    <div class="bar-meta"><span class="lbl">Memory</span><span class="val">${mp.toFixed(0)}% · ${(g.mem_used/1024).toFixed(1)}/${(g.mem_total/1024).toFixed(0)} GiB</span></div>
+    ${bar(mp,memColor)}
+  </div>
+  <div class="procs">
+    <div class="procs-title">Processes</div>
+    ${procsHtml}
+  </div>
+</div>`;
+}
+
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function refresh(){
+  try{
+    const r=await fetch('/api/stats',{signal:AbortSignal.timeout(5000)});
+    if(!r.ok)throw new Error(r.status);
+    const d=await r.json();
+    document.getElementById('dot').className='dot';
+    document.getElementById('live-txt').textContent='live';
+
+    const avgUtil=d.gpus.reduce((s,g)=>s+g.util,0)/(d.gpus.length||1);
+    const totalMem=d.gpus.reduce((s,g)=>s+g.mem_total,0);
+    const usedMem=d.gpus.reduce((s,g)=>s+g.mem_used,0);
+    const avgTemp=d.gpus.reduce((s,g)=>s+g.temp,0)/(d.gpus.length||1);
+    const totalProcs=Object.values(d.procs).reduce((s,a)=>s+a.length,0);
+
+    const sum=document.getElementById('summary');
+    sum.style.display='flex';
+    document.getElementById('sum-gpus').textContent=d.gpus.length;
+    document.getElementById('sum-util').style.color=utilColor(avgUtil);
+    document.getElementById('sum-util').textContent=avgUtil.toFixed(0)+'%';
+    document.getElementById('sum-mem').textContent=
+      `${(usedMem/1024).toFixed(1)}/${(totalMem/1024).toFixed(0)} GiB`;
+    document.getElementById('sum-temp').style.color=tempColor(avgTemp);
+    document.getElementById('sum-temp').textContent=avgTemp.toFixed(0)+'°C';
+    document.getElementById('sum-procs').textContent=totalProcs;
+
+    document.getElementById('grid').innerHTML=
+      d.gpus.map(g=>renderCard(g,d.procs)).join('');
+  }catch(e){
+    document.getElementById('dot').className='dot offline';
+    document.getElementById('live-txt').textContent='offline';
+  }
+}
+
+// Live clock
+setInterval(()=>{
+  const n=new Date();
+  document.getElementById('clock').textContent=
+    n.toLocaleDateString()+' '+n.toLocaleTimeString();
+},1000);
+
+setInterval(refresh,2000);
+refresh();
+</script>
+</body>
+</html>
+"""
+
+
+class _DashboardHandler(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *_):
+        pass  # suppress access logs
+
+    def do_GET(self):
+        if self.path in ("/", "/index.html"):
+            html = _DASHBOARD_HTML.replace("%%HOST%%", HOSTNAME).replace("%%ACCENT%%", MACHINE_COLOR)
+            body = html.encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        elif self.path == "/api/stats":
+            gpus  = get_gpu_stats()
+            procs = get_gpu_processes()
+            # Convert procs keys to strings for JSON
+            procs_str = {str(k): v for k, v in procs.items()}
+            payload = {
+                "hostname": HOSTNAME,
+                "color":    MACHINE_COLOR,
+                "time":     datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "gpus":     gpus,
+                "procs":    procs_str,
+            }
+            body = json.dumps(payload).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(body)
+
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+
+def _start_dashboard(port: int) -> None:
+    """Start the web dashboard in a background daemon thread."""
+    server = http.server.ThreadingHTTPServer(("", port), _DashboardHandler)
+    t = threading.Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    logger.info(f"Dashboard running at http://0.0.0.0:{port}")
+
+
+# ---------------------------------------------------------------------------
 # Monitor loop
 # ---------------------------------------------------------------------------
 def _fmt_duration(seconds: float) -> str:
@@ -373,6 +655,9 @@ def monitor():
     if not channels:
         logger.warning("No notification channels configured")
 
+    if WEB_PORT:
+        _start_dashboard(WEB_PORT)
+
     startup = True
 
     while True:
@@ -381,8 +666,8 @@ def monitor():
             time.sleep(CHECK_INTERVAL)
             continue
 
-        now      = time.time()
-        procs    = None  # fetched lazily; at most one call per iteration
+        now   = time.time()
+        procs = None  # fetched lazily; at most one call per iteration
 
         def get_procs() -> dict:
             nonlocal procs
@@ -390,7 +675,6 @@ def monitor():
                 procs = get_gpu_processes()
             return procs
 
-        # Startup notification (first successful GPU read)
         if startup:
             notify(f":rocket: *Monitor started* | " + format_status(gpus, get_procs()))
             last_status_time = now
@@ -398,7 +682,6 @@ def monitor():
 
         all_idle = all(g["util"] < IDLE_THRESHOLD for g in gpus)
 
-        # Periodic status report
         status_interval = STATUS_IDLE if all_idle else STATUS_ACTIVE
         if now - last_status_time >= status_interval * 60:
             dur = ""
@@ -414,7 +697,6 @@ def monitor():
         busy_gpus = [g for g in gpus if g["util"] >= IDLE_THRESHOLD]
 
         if len(idle_gpus) == len(gpus):
-            # All GPUs idle
             if idle_since is None:
                 idle_since = now
             active_since    = None
@@ -433,13 +715,10 @@ def monitor():
             was_idle = True
 
         else:
-            # At least one GPU active
             if not idle_gpus:
-                # All GPUs fully busy — allow partial-idle to re-alert next time
                 partial_alerted = False
 
             if was_idle:
-                # Recovery from full idle
                 logger.info("GPUs active again")
                 notify(
                     f":white_check_mark: *GPUs active* | " + format_status(gpus, get_procs()),
@@ -447,7 +726,6 @@ def monitor():
                 )
                 last_status_time = now
 
-            # Partial idle: some GPUs wasted
             if idle_gpus and busy_gpus and not partial_alerted and _cooldown_ok(last_alert_time, now):
                 idle_ids = ",".join(str(g["idx"]) for g in idle_gpus)
                 logger.info(f"Partial idle: {len(idle_gpus)}/{len(gpus)}")
@@ -485,9 +763,12 @@ def run_with_watchdog(target):
 
 
 def main():
+    global WEB_PORT
     import argparse
     parser = argparse.ArgumentParser(description="Lightweight GPU Monitor")
     parser.add_argument("--once", action="store_true", help="Print status and exit")
+    parser.add_argument("--web",  type=int, metavar="PORT", default=0,
+                        help="Start web dashboard on PORT (overrides WEB_PORT env var)")
     args = parser.parse_args()
 
     if args.once:
@@ -495,6 +776,9 @@ def main():
         procs = get_gpu_processes()
         print(_to_plain(format_status(gpus, procs)))
         sys.exit(0)
+
+    if args.web:
+        WEB_PORT = args.web
 
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     run_with_watchdog(monitor)
