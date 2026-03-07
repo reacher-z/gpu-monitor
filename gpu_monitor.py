@@ -14,6 +14,7 @@ import os
 import re
 import signal
 import smtplib
+import socket
 import subprocess
 import sys
 import time
@@ -50,8 +51,7 @@ ALERT_COOLDOWN = int(os.environ.get("ALERT_COOLDOWN", "30"))
 STATUS_ACTIVE  = int(os.environ.get("STATUS_ACTIVE",  "10"))
 STATUS_IDLE    = int(os.environ.get("STATUS_IDLE",    "30"))
 
-_full_hostname = subprocess.run(["hostname"], capture_output=True, text=True).stdout.strip() or "unknown"
-HOSTNAME = _full_hostname.split(".")[0]
+HOSTNAME = socket.gethostname().split(".")[0] or "unknown"
 
 _COLORS = ["#2eb886", "#e01e5a", "#36c5f0", "#ecb22e", "#6c5ce7", "#e17055", "#00b894", "#fd79a8"]
 MACHINE_COLOR = os.environ.get(
@@ -62,31 +62,21 @@ MACHINE_COLOR = os.environ.get(
 # ---------------------------------------------------------------------------
 # Config — notification channels
 # ---------------------------------------------------------------------------
-# Slack
-SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL", "")
-
-# Discord
+SLACK_WEBHOOK_URL   = os.environ.get("SLACK_WEBHOOK_URL",   "")
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
+TELEGRAM_BOT_TOKEN  = os.environ.get("TELEGRAM_BOT_TOKEN",  "")
+TELEGRAM_CHAT_ID    = os.environ.get("TELEGRAM_CHAT_ID",    "")
+EMAIL_SMTP_HOST     = os.environ.get("EMAIL_SMTP_HOST",     "")
+EMAIL_SMTP_PORT     = int(os.environ.get("EMAIL_SMTP_PORT", "587"))
+EMAIL_USER          = os.environ.get("EMAIL_USER",          "")
+EMAIL_PASS          = os.environ.get("EMAIL_PASS",          "")
+EMAIL_TO            = os.environ.get("EMAIL_TO",            "")   # comma-separated
+TWILIO_ACCOUNT_SID  = os.environ.get("TWILIO_ACCOUNT_SID",  "")
+TWILIO_AUTH_TOKEN   = os.environ.get("TWILIO_AUTH_TOKEN",   "")
+TWILIO_FROM         = os.environ.get("TWILIO_FROM",         "")
+TWILIO_TO           = os.environ.get("TWILIO_TO",           "")   # comma-separated
+IMESSAGE_TO         = os.environ.get("IMESSAGE_TO",         "")   # comma-separated
 
-# Telegram
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID",   "")
-
-# Email (SMTP)
-EMAIL_SMTP_HOST = os.environ.get("EMAIL_SMTP_HOST", "")
-EMAIL_SMTP_PORT = int(os.environ.get("EMAIL_SMTP_PORT", "587"))
-EMAIL_USER      = os.environ.get("EMAIL_USER",      "")
-EMAIL_PASS      = os.environ.get("EMAIL_PASS",      "")
-EMAIL_TO        = os.environ.get("EMAIL_TO",        "")   # comma-separated
-
-# SMS — Twilio (no SDK required, uses REST API directly)
-TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "")
-TWILIO_AUTH_TOKEN  = os.environ.get("TWILIO_AUTH_TOKEN",  "")
-TWILIO_FROM        = os.environ.get("TWILIO_FROM",        "")
-TWILIO_TO          = os.environ.get("TWILIO_TO",          "")  # comma-separated
-
-# iMessage (macOS only — uses osascript)
-IMESSAGE_TO = os.environ.get("IMESSAGE_TO", "")  # comma-separated phone/email
 
 # ---------------------------------------------------------------------------
 # GPU queries
@@ -158,20 +148,28 @@ _SLACK_EMOJI = {
     ":eyes:": "👀",
     ":x:": "❌",
 }
+_RE_BOLD   = re.compile(r"\*([^*]+)\*")
+_RE_CODE   = re.compile(r"`([^`]+)`")
+_RE_ITALIC = re.compile(r"_([^_]+)_")
 
 
 def _to_plain(text: str) -> str:
     """Convert Slack-formatted text to plain text with Unicode emoji."""
     for code, uni in _SLACK_EMOJI.items():
         text = text.replace(code, uni)
-    text = re.sub(r"\*([^*]+)\*", r"\1", text)
-    text = re.sub(r"`([^`]+)`",   r"\1", text)
-    text = re.sub(r"_([^_]+)_",   r"\1", text)
+    text = _RE_BOLD.sub(r"\1", text)
+    text = _RE_CODE.sub(r"\1", text)
+    text = _RE_ITALIC.sub(r"\1", text)
     return text
 
 
+def _cooldown_ok(last_alert_time: float | None, now: float) -> bool:
+    """True if enough time has passed since the last alert (or no alert yet)."""
+    return last_alert_time is None or (now - last_alert_time) / 60 >= ALERT_COOLDOWN
+
+
 def _hex_to_int(color: str) -> int:
-    """Convert '#rrggbb' to Discord-style decimal color integer."""
+    """Convert '#rrggbb' to Discord decimal color integer."""
     try:
         return int(color.lstrip("#"), 16)
     except (ValueError, AttributeError):
@@ -182,7 +180,7 @@ def format_status(gpus: list[dict], procs: dict | None = None) -> str:
     """Slack-formatted GPU status."""
     if not gpus:
         return ":x: Cannot read GPU status"
-    now = datetime.now().strftime("%m-%d %H:%M")
+    now      = datetime.now().strftime("%m-%d %H:%M")
     total_mem = sum(g["mem_total"] for g in gpus)
     used_mem  = sum(g["mem_used"]  for g in gpus)
     mem_pct   = used_mem / total_mem * 100 if total_mem else 0
@@ -206,59 +204,44 @@ def format_status(gpus: list[dict], procs: dict | None = None) -> str:
 # ---------------------------------------------------------------------------
 # Notification senders
 # ---------------------------------------------------------------------------
-def send_slack(text: str, color: str = "") -> bool:
-    if not SLACK_WEBHOOK_URL:
-        return False
-    payload = {"attachments": [{"color": color or MACHINE_COLOR, "text": text, "mrkdwn_in": ["text"]}]}
-    try:
-        req = urllib.request.Request(
-            SLACK_WEBHOOK_URL, data=json.dumps(payload).encode(),
-            headers={"Content-Type": "application/json"}, method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return resp.status == 200
-    except Exception as e:
-        logger.error(f"Slack error: {e}")
-        return False
-
-
-def send_discord(plain_text: str, color: str = "") -> bool:
-    if not DISCORD_WEBHOOK_URL:
-        return False
-    payload = {"embeds": [{"description": plain_text, "color": _hex_to_int(color or MACHINE_COLOR)}]}
-    try:
-        req = urllib.request.Request(
-            DISCORD_WEBHOOK_URL, data=json.dumps(payload).encode(),
-            headers={"Content-Type": "application/json"}, method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return resp.status in (200, 204)
-    except Exception as e:
-        logger.error(f"Discord error: {e}")
-        return False
-
-
-def send_telegram(plain_text: str) -> bool:
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        return False
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": plain_text}
+def _post_json(url: str, payload: dict, ok_statuses: tuple = (200,), label: str = "") -> bool:
+    """POST JSON payload; returns True if response status is in ok_statuses."""
     try:
         req = urllib.request.Request(
             url, data=json.dumps(payload).encode(),
             headers={"Content-Type": "application/json"}, method="POST",
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
-            return resp.status == 200
+            return resp.status in ok_statuses
     except Exception as e:
-        logger.error(f"Telegram error: {e}")
+        logger.error(f"{label} error: {e}")
         return False
 
 
-def send_email(plain_text: str, color: str = "") -> bool:
+def send_slack(text: str, color: str = "") -> bool:
+    if not SLACK_WEBHOOK_URL:
+        return False
+    payload = {"attachments": [{"color": color or MACHINE_COLOR, "text": text, "mrkdwn_in": ["text"]}]}
+    return _post_json(SLACK_WEBHOOK_URL, payload, label="Slack")
+
+
+def send_discord(plain_text: str, color: str = "") -> bool:
+    if not DISCORD_WEBHOOK_URL:
+        return False
+    payload = {"embeds": [{"description": plain_text, "color": _hex_to_int(color or MACHINE_COLOR)}]}
+    return _post_json(DISCORD_WEBHOOK_URL, payload, ok_statuses=(200, 204), label="Discord")
+
+
+def send_telegram(plain_text: str) -> bool:
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        return False
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    return _post_json(url, {"chat_id": TELEGRAM_CHAT_ID, "text": plain_text}, label="Telegram")
+
+
+def send_email(plain_text: str) -> bool:
     if not all([EMAIL_SMTP_HOST, EMAIL_USER, EMAIL_PASS, EMAIL_TO]):
         return False
-    # First line of plain_text becomes the subject
     lines = plain_text.strip().splitlines()
     subject = lines[0].strip() if lines else "GPU Monitor Alert"
     try:
@@ -280,10 +263,9 @@ def send_sms(plain_text: str) -> bool:
     """Send SMS via Twilio REST API (no SDK required)."""
     if not all([TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM, TWILIO_TO]):
         return False
-    url = f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json"
+    url   = f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json"
     creds = b64encode(f"{TWILIO_ACCOUNT_SID}:{TWILIO_AUTH_TOKEN}".encode()).decode()
-    # SMS has 160-char limit; truncate if needed
-    body = plain_text[:155] + "…" if len(plain_text) > 160 else plain_text
+    body  = (plain_text[:155] + "…") if len(plain_text) > 160 else plain_text
     ok = True
     for to in TWILIO_TO.split(","):
         to = to.strip()
@@ -306,27 +288,35 @@ def send_sms(plain_text: str) -> bool:
 
 
 def send_imessage(plain_text: str) -> bool:
-    """Send iMessage via osascript (macOS only)."""
+    """Send iMessage via osascript (macOS only).
+
+    Text is passed as a script argument (on run argv) rather than embedded
+    in the script body, preventing AppleScript injection via message content.
+    """
     if not IMESSAGE_TO:
         return False
     if sys.platform != "darwin":
         logger.debug("iMessage skipped: not macOS")
         return False
+    # Text passed as argv — never interpolated into script code
+    script = (
+        "on run argv\n"
+        "  tell application \"Messages\"\n"
+        "    set tgt to buddy (item 2 of argv) of (service 1 whose service type is iMessage)\n"
+        "    send (item 1 of argv) to tgt\n"
+        "  end tell\n"
+        "end run"
+    )
     ok = True
     for recipient in IMESSAGE_TO.split(","):
         recipient = recipient.strip()
         if not recipient:
             continue
-        # Escape double-quotes in message text
-        safe_text = plain_text.replace('"', '\\"')
-        script = (
-            f'tell application "Messages"\n'
-            f'  set targetBuddy to buddy "{recipient}" of (service 1 whose service type is iMessage)\n'
-            f'  send "{safe_text}" to targetBuddy\n'
-            f'end tell'
-        )
         try:
-            r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=15)
+            r = subprocess.run(
+                ["osascript", "-e", script, plain_text, recipient],
+                capture_output=True, text=True, timeout=15,
+            )
             if r.returncode != 0:
                 logger.error(f"iMessage error ({recipient}): {r.stderr.strip()}")
                 ok = False
@@ -342,7 +332,7 @@ def notify(slack_text: str, color: str = "") -> None:
     send_slack(slack_text, color)
     send_discord(plain, color)
     send_telegram(plain)
-    send_email(plain, color)
+    send_email(plain)
     send_sms(plain)
     send_imessage(plain)
 
@@ -359,19 +349,19 @@ def _fmt_duration(seconds: float) -> str:
 
 
 def monitor():
-    idle_since      = None
-    active_since    = None
-    last_alert_time = None
+    idle_since       = None
+    active_since     = None
+    last_alert_time  = None
     last_status_time = 0.0
-    was_idle        = False
-    partial_alerted = False
+    was_idle         = False
+    partial_alerted  = False
 
     channels = [c for c, v in [
         ("Slack",    SLACK_WEBHOOK_URL),
         ("Discord",  DISCORD_WEBHOOK_URL),
         ("Telegram", TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID),
         ("Email",    EMAIL_SMTP_HOST and EMAIL_TO),
-        ("SMS",      TWILIO_ACCOUNT_SID and TWILIO_TO),
+        ("SMS",      TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM and TWILIO_TO),
         ("iMessage", IMESSAGE_TO and sys.platform == "darwin"),
     ] if v]
 
@@ -383,11 +373,7 @@ def monitor():
     if not channels:
         logger.warning("No notification channels configured")
 
-    gpus = get_gpu_stats()
-    if gpus:
-        procs = get_gpu_processes()
-        notify(f":rocket: *Monitor started* | " + format_status(gpus, procs))
-        last_status_time = time.time()
+    startup = True
 
     while True:
         gpus = get_gpu_stats()
@@ -396,18 +382,31 @@ def monitor():
             continue
 
         now      = time.time()
+        procs    = None  # fetched lazily; at most one call per iteration
+
+        def get_procs() -> dict:
+            nonlocal procs
+            if procs is None:
+                procs = get_gpu_processes()
+            return procs
+
+        # Startup notification (first successful GPU read)
+        if startup:
+            notify(f":rocket: *Monitor started* | " + format_status(gpus, get_procs()))
+            last_status_time = now
+            startup = False
+
         all_idle = all(g["util"] < IDLE_THRESHOLD for g in gpus)
 
-        # Periodic status
+        # Periodic status report
         status_interval = STATUS_IDLE if all_idle else STATUS_ACTIVE
         if now - last_status_time >= status_interval * 60:
-            procs = get_gpu_processes()
             dur = ""
             if active_since:
                 dur = f" | up {_fmt_duration(now - active_since)}"
             elif idle_since:
                 dur = f" | idle {_fmt_duration(now - idle_since)}"
-            notify(format_status(gpus, procs) + dur)
+            notify(format_status(gpus, get_procs()) + dur)
             last_status_time = now
             logger.info("Periodic status sent")
 
@@ -415,6 +414,7 @@ def monitor():
         busy_gpus = [g for g in gpus if g["util"] >= IDLE_THRESHOLD]
 
         if len(idle_gpus) == len(gpus):
+            # All GPUs idle
             if idle_since is None:
                 idle_since = now
             active_since    = None
@@ -422,41 +422,42 @@ def monitor():
 
             idle_min = (now - idle_since) / 60
             if idle_min >= IDLE_MINUTES:
-                should_alert = (
-                    last_alert_time is None
-                    or (now - last_alert_time) / 60 >= ALERT_COOLDOWN
-                )
-                if should_alert:
-                    procs = get_gpu_processes()
-                    msg   = f":rotating_light: *All idle {_fmt_duration(now - idle_since)}* | " + format_status(gpus, procs)
+                if _cooldown_ok(last_alert_time, now):
                     logger.warning(f"All GPUs idle for {int(idle_min)} min")
-                    notify(msg, color="#e01e5a")
+                    notify(
+                        f":rotating_light: *All idle {_fmt_duration(now - idle_since)}* | "
+                        + format_status(gpus, get_procs()),
+                        color="#e01e5a",
+                    )
                     last_alert_time = now
             was_idle = True
 
         else:
-            if was_idle and idle_since is not None:
-                procs = get_gpu_processes()
-                notify(f":white_check_mark: *GPUs active* | " + format_status(gpus, procs), color="#22c55e")
-                last_status_time = now
-                logger.info("GPUs active again")
+            # At least one GPU active
+            if not idle_gpus:
+                # All GPUs fully busy — allow partial-idle to re-alert next time
+                partial_alerted = False
 
-            if idle_gpus and busy_gpus and not partial_alerted:
-                should_partial = (
-                    last_alert_time is None
-                    or (now - last_alert_time) / 60 >= ALERT_COOLDOWN
+            if was_idle:
+                # Recovery from full idle
+                logger.info("GPUs active again")
+                notify(
+                    f":white_check_mark: *GPUs active* | " + format_status(gpus, get_procs()),
+                    color="#22c55e",
                 )
-                if should_partial:
-                    idle_ids = ",".join(str(g["idx"]) for g in idle_gpus)
-                    procs    = get_gpu_processes()
-                    msg      = (
-                        f":eyes: *{len(idle_gpus)}/{len(gpus)} GPUs idle* "
-                        f"(GPU {idle_ids}) | " + format_status(gpus, procs)
-                    )
-                    logger.info(f"Partial idle: {len(idle_gpus)}/{len(gpus)}")
-                    notify(msg, color="#ecb22e")
-                    partial_alerted = True
-                    last_alert_time = now
+                last_status_time = now
+
+            # Partial idle: some GPUs wasted
+            if idle_gpus and busy_gpus and not partial_alerted and _cooldown_ok(last_alert_time, now):
+                idle_ids = ",".join(str(g["idx"]) for g in idle_gpus)
+                logger.info(f"Partial idle: {len(idle_gpus)}/{len(gpus)}")
+                notify(
+                    f":eyes: *{len(idle_gpus)}/{len(gpus)} GPUs idle* "
+                    f"(GPU {idle_ids}) | " + format_status(gpus, get_procs()),
+                    color="#ecb22e",
+                )
+                partial_alerted = True
+                last_alert_time = now
 
             if active_since is None:
                 active_since = now
