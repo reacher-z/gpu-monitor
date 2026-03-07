@@ -18,6 +18,7 @@ Lightweight NVIDIA GPU monitor with Slack alerts. Single Python file, minimal de
 ## Quick Start
 
 ```bash
+pip install pyyaml
 export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
 python gpu_monitor.py           # start monitoring
 python gpu_monitor.py --once    # check status once

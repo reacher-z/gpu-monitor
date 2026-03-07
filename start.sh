@@ -6,10 +6,10 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 PIDFILE="$DIR/.monitor.pid"
 LOGFILE="$DIR/gpu_monitor.log"
 
-# ---- Config (edit these or set in .env) ----
-export SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL:-}"
-# export http_proxy=http://your-proxy-host:port
-# export https_proxy=http://your-proxy-host:port
+# ---- Config (edit these) ----
+export SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL:-https://hooks.slack.com/services/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}"
+export http_proxy=http://oversea-squid5.sgp.txyun:11080
+export https_proxy=http://oversea-squid5.sgp.txyun:11080
 export CHECK_INTERVAL=60
 export IDLE_THRESHOLD=10
 export IDLE_MINUTES=5
