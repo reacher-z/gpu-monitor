@@ -116,9 +116,37 @@ bash start.sh status    # check if running
 |----------|-------------|
 | `IMESSAGE_TO` | Recipient phone/email, comma-separated |
 
+## GitHub Pages Dashboard
+
+Real-time GPU dashboard hosted on GitHub Pages — no server needed.
+
+**Setup:**
+
+1. Enable GitHub Pages in your repo: Settings → Pages → Source: `main` branch, `/docs` folder
+2. Create a fine-grained personal access token with **Contents: read and write** on that repo
+3. Set env vars on each machine you want to monitor:
+
+```bash
+export GITHUB_PAGES_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+export GITHUB_PAGES_REPO=your-username/your-repo
+python gpu_monitor.py
+```
+
+The monitor pushes `docs/data/{hostname}.json` every check interval. The dashboard at `https://your-username.github.io/your-repo/` auto-refreshes every 30 seconds.
+
+Multi-machine: each machine pushes its own file. The dashboard shows all machines side-by-side with online/stale/offline badges.
+
+### GitHub Pages env vars
+
+| Variable | Description |
+|----------|-------------|
+| `GITHUB_PAGES_TOKEN` | Fine-grained token with Contents read+write |
+| `GITHUB_PAGES_REPO` | Repo to push stats to, e.g. `owner/repo` |
+| `WEB_PORT` | Local web dashboard port (optional, e.g. `8080`) |
+
 ## Multi-Machine Setup
 
-Deploy to each machine — each gets an auto-assigned color in Slack/Discord. All report to the same webhook/channel.
+Deploy to each machine — each gets an auto-assigned color in Slack/Discord and the GitHub Pages dashboard. All report to the same webhook/channel.
 
 ## Setting Up Telegram
 
