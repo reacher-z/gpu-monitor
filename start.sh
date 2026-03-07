@@ -6,19 +6,31 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 PIDFILE="$DIR/.monitor.pid"
 LOGFILE="$DIR/gpu_monitor.log"
 
-# ---- Config (edit these) ----
-export SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL:-https://hooks.slack.com/services/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}"
-export http_proxy=http://oversea-squid5.sgp.txyun:11080
-export https_proxy=http://oversea-squid5.sgp.txyun:11080
-export CHECK_INTERVAL=60
-export IDLE_THRESHOLD=10
-export IDLE_MINUTES=5
-export ALERT_COOLDOWN=30
-export STATUS_ACTIVE=10          # report every N min when GPUs active
-export STATUS_IDLE=30            # report every N min when GPUs idle
-export LOG_FILE="$LOGFILE"       # enable log rotation (5MB x 3 backups)
-# export MACHINE_COLOR="#2eb886"  # optional: override auto color
-# ------------------------------
+# ---- Config (set these via environment or edit here) ----
+export SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL:-}"
+export DISCORD_WEBHOOK_URL="${DISCORD_WEBHOOK_URL:-}"
+export TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
+export TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-}"
+export EMAIL_SMTP_HOST="${EMAIL_SMTP_HOST:-}"
+export EMAIL_USER="${EMAIL_USER:-}"
+export EMAIL_PASS="${EMAIL_PASS:-}"
+export EMAIL_TO="${EMAIL_TO:-}"
+export TWILIO_ACCOUNT_SID="${TWILIO_ACCOUNT_SID:-}"
+export TWILIO_AUTH_TOKEN="${TWILIO_AUTH_TOKEN:-}"
+export TWILIO_FROM="${TWILIO_FROM:-}"
+export TWILIO_TO="${TWILIO_TO:-}"
+export IMESSAGE_TO="${IMESSAGE_TO:-}"
+export CHECK_INTERVAL="${CHECK_INTERVAL:-60}"
+export IDLE_THRESHOLD="${IDLE_THRESHOLD:-10}"
+export IDLE_MINUTES="${IDLE_MINUTES:-5}"
+export ALERT_COOLDOWN="${ALERT_COOLDOWN:-30}"
+export STATUS_ACTIVE="${STATUS_ACTIVE:-10}"
+export STATUS_IDLE="${STATUS_IDLE:-30}"
+export LOG_FILE="$LOGFILE"
+# export MACHINE_COLOR="#2eb886"
+# export http_proxy=http://your-proxy-host:port
+# export https_proxy=http://your-proxy-host:port
+# ---------------------------------------------------------
 
 stop_monitor() {
     if [ -f "$PIDFILE" ]; then
