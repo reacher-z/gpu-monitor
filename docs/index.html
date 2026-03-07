@@ -7,111 +7,204 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 
-/* ── Dark theme (default) ── */
-:root{
-  --bg:#0b0b12;
-  --surface:#12121c;
-  --surface2:#18182a;
-  --border:rgba(255,255,255,.07);
-  --text:#e2e8f0;
-  --muted:#4a5568;
-  --green:#22c55e;
-  --amber:#f59e0b;
-  --red:#ef4444;
-  --blue:#60a5fa;
-  --track-bg:rgba(255,255,255,.05);
-  --ring-track:rgba(255,255,255,.1);
+/* ── Dark theme (default) ────────────────────────────────────────────────── */
+:root {
+  --bg:#05050f;
+  --surface:rgba(255,255,255,.028);
+  --surface2:rgba(255,255,255,.055);
+  --border:rgba(255,255,255,.08);
+  --border-h:rgba(255,255,255,.18);
+  --text:#dde1f0;
+  --muted:#384060;
+  --green:#00e676;
+  --amber:#ffab40;
+  --red:#ff4d6d;
+  --blue:#40c8ff;
+  --header-bg:rgba(5,5,15,.82);
+  --shadow:none;
 }
 
-/* ── Light theme ── */
-[data-theme="light"]{
-  --bg:#f4f6f9;
+/* ── Light theme ─────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg:#eef2ff;
   --surface:#ffffff;
-  --surface2:#eef0f5;
-  --border:rgba(0,0,0,.09);
-  --text:#1e2030;
-  --muted:#7a8499;
-  --green:#16a34a;
+  --surface2:#f3f5ff;
+  --border:rgba(0,0,0,.07);
+  --border-h:rgba(79,70,229,.3);
+  --text:#1e1b4b;
+  --muted:#8892b0;
+  --green:#059669;
   --amber:#d97706;
   --red:#dc2626;
-  --blue:#2563eb;
-  --track-bg:rgba(0,0,0,.07);
-  --ring-track:rgba(0,0,0,.1);
+  --blue:#4f46e5;
+  --header-bg:rgba(255,255,255,.88);
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 6px 20px rgba(79,70,229,.07);
 }
 
-/* smooth transitions on theme switch */
-body,header,.g-card,.machine,.gpu-cell,.pill,.track{
-  transition:background .25s,color .25s,border-color .25s;
+/* ── Body & background ───────────────────────────────────────────────────── */
+body {
+  color:var(--text);
+  font-family:ui-monospace,'SF Mono','Cascadia Code',monospace;
+  font-size:13px;
+  min-height:100vh;
 }
 
-body{background:var(--bg);color:var(--text);font-family:ui-monospace,'SF Mono','Cascadia Code',monospace;font-size:13px;min-height:100vh}
+/* Dark: dot grid + dual radial glows (fixed so they don't scroll) */
+[data-theme="dark"] body {
+  background-color:#05050f;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(255,255,255,.03) 1px, transparent 0),
+    radial-gradient(ellipse 75vw 55vh at 18% 12%, rgba(0,200,255,.07) 0%, transparent 68%),
+    radial-gradient(ellipse 60vw 75vh at 85% 90%, rgba(140,65,255,.06) 0%, transparent 68%);
+  background-size:28px 28px,100% 100%,100% 100%;
+  background-attachment:scroll,fixed,fixed;
+}
 
-/* Header */
-header{
-  display:flex;align-items:center;gap:14px;padding:12px 20px;
-  background:var(--surface);border-bottom:1px solid var(--border);
+/* Light: soft lavender corner blushes */
+[data-theme="light"] body {
+  background-color:#eef2ff;
+  background-image:
+    radial-gradient(ellipse 75vw 55vh at 0% 0%, rgba(165,180,252,.35) 0%, transparent 60%),
+    radial-gradient(ellipse 60vw 70vh at 100% 100%, rgba(196,181,253,.28) 0%, transparent 60%);
+  background-size:100% 100%,100% 100%;
+  background-attachment:fixed,fixed;
+}
+
+/* ── Smooth theme transitions ────────────────────────────────────────────── */
+body,header,.machine,.gpu-cell,.pill,.track,.g-stat,
+.machine-header,.gpu-idx-badge,.badge {
+  transition:background-color .3s ease,border-color .3s ease,box-shadow .3s ease;
+}
+.logo span { transition:color .3s ease,text-shadow .3s ease; }
+a,span,div,p { transition:color .3s ease; }
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+header {
+  display:flex;align-items:center;gap:12px;
+  padding:10px 20px;
+  background:var(--header-bg);
+  border-bottom:1px solid var(--border);
   position:sticky;top:0;z-index:10;
+  backdrop-filter:blur(24px);
+  -webkit-backdrop-filter:blur(24px);
 }
-.logo{font-size:14px;font-weight:700;letter-spacing:.04em;color:var(--text)}
-.logo span{color:var(--blue)}
+
+.logo {
+  font-size:14px;font-weight:700;letter-spacing:.05em;
+  color:var(--text);user-select:none;
+}
+[data-theme="dark"] .logo span {
+  color:#40c8ff;
+  text-shadow:0 0 22px rgba(64,200,255,.65);
+}
+[data-theme="light"] .logo span { color:#4f46e5; }
+
 .spacer{flex:1}
-#theme-btn{
+
+.hdr-btn {
   background:none;border:1px solid var(--border);color:var(--muted);
-  border-radius:6px;padding:4px 8px;font-size:13px;cursor:pointer;
-  font-family:inherit;transition:border-color .2s,color .2s;line-height:1;
+  border-radius:7px;padding:4px 10px;font-size:11px;
+  cursor:pointer;font-family:inherit;
+  transition:border-color .2s,color .2s;
 }
-#theme-btn:hover{border-color:var(--blue);color:var(--blue)}
-#refresh-btn{
-  background:none;border:1px solid var(--border);color:var(--muted);
-  border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;
-  font-family:inherit;transition:border-color .2s,color .2s;
-}
-#refresh-btn:hover{border-color:var(--blue);color:var(--blue)}
-#status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-left:8px}
+.hdr-btn:hover{border-color:var(--blue);color:var(--blue)}
+#theme-btn{padding:4px 8px;font-size:14px;line-height:1}
+
+#status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0}
 .dot.stale{background:var(--amber)}
 .dot.err{background:var(--red)}
-#clock{color:var(--muted);font-size:11px;margin-left:10px}
 
-/* Global summary */
-#global-bar{
-  display:flex;padding:0 20px;margin:14px 0 0;flex-wrap:wrap;gap:10px;
+/* Pulsing online dot in dark mode */
+@keyframes pulse-ok {
+  0%,100%{box-shadow:0 0 0 0 rgba(0,230,118,.55)}
+  60%{box-shadow:0 0 0 6px rgba(0,230,118,0)}
 }
-.g-card{
-  background:var(--surface);border:1px solid var(--border);border-radius:10px;
-  padding:10px 16px;display:flex;flex-direction:column;gap:3px;min-width:120px;
+[data-theme="dark"] .dot:not(.stale):not(.err){
+  animation:pulse-ok 2.5s ease-in-out infinite;
 }
-.g-label{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
-.g-val{font-size:20px;font-weight:700}
 
-/* Machine sections */
-main{padding:14px 20px;display:flex;flex-direction:column;gap:14px}
+#clock{color:var(--muted);font-size:11px;margin-left:4px}
 
-.machine{
-  background:var(--surface);border:1px solid var(--border);
+/* Countdown ring */
+#countdown{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted)}
+#countdown svg{transform:rotate(-90deg)}
+#cd-track{transition:stroke .3s}
+#cd-circle{stroke-dasharray:22;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear}
+
+/* ── Global stats strip ──────────────────────────────────────────────────── */
+#global-bar {
+  display:flex;align-items:stretch;
+  margin:14px 20px 0;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;overflow:hidden;
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  box-shadow:var(--shadow);
+}
+.g-stat {
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:11px 20px;flex:1;gap:3px;min-width:80px;
+}
+.g-stat+.g-stat{border-left:1px solid var(--border)}
+.g-label{font-size:8px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.g-val{font-size:18px;font-weight:700;line-height:1}
+
+/* ── Machine cards ───────────────────────────────────────────────────────── */
+main{padding:14px 20px 32px;display:flex;flex-direction:column;gap:12px}
+
+.machine {
+  background:var(--surface);
+  border:1px solid var(--border);
   border-radius:14px;overflow:hidden;
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  box-shadow:var(--shadow);
+  transition:border-color .25s,box-shadow .25s,background-color .3s;
 }
-.machine-header{
-  display:flex;align-items:center;gap:12px;padding:12px 16px;
-  border-bottom:1px solid var(--border);
+[data-theme="dark"] .machine:hover{
+  border-color:var(--border-h);
+  background:rgba(255,255,255,.04);
 }
-.machine-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.machine-name{font-weight:700;font-size:13px}
-.machine-time{color:var(--muted);font-size:10px;margin-left:auto}
-.badge{
-  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
-  padding:2px 7px;border-radius:20px;
+[data-theme="light"] .machine:hover{
+  box-shadow:0 2px 8px rgba(0,0,0,.08),0 8px 32px rgba(79,70,229,.12);
 }
-.badge.online{background:rgba(34,197,94,.15);color:var(--green)}
-.badge.stale{background:rgba(245,158,11,.15);color:var(--amber)}
-.badge.offline{background:rgba(239,68,68,.15);color:var(--red)}
 
-/* GPU grid inside machine */
+.machine-header{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;border-bottom:1px solid var(--border);
+}
+[data-theme="dark"] .machine-header{background:rgba(255,255,255,.018)}
+[data-theme="light"] .machine-header{background:var(--surface2)}
+
+.machine-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+[data-theme="dark"] .machine-dot{box-shadow:0 0 10px currentColor}
+
+.machine-name{font-weight:700;font-size:13px;letter-spacing:.02em}
+.machine-time{color:var(--muted);font-size:10px;margin-left:auto}
+
+.badge{
+  font-size:9px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.08em;padding:2px 8px;border-radius:20px;
+}
+.badge.online {background:rgba(0,230,118,.13);color:var(--green)}
+.badge.stale  {background:rgba(255,171,64,.13);color:var(--amber)}
+.badge.offline{background:rgba(255,77,109,.13);color:var(--red)}
+
+/* GPU grid */
 .gpu-grid{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
   gap:1px;background:var(--border);
 }
-.gpu-cell{background:var(--surface);padding:14px 16px;}
+.gpu-cell{
+  background:var(--surface);
+  padding:14px 16px;
+}
+/* In dark mode, GPU cells use true bg so glass effect is visible on card */
+[data-theme="dark"] .gpu-cell{background:#05050f}
+
 .gpu-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .gpu-label{font-size:10px;color:var(--muted)}
 .gpu-idx-badge{
@@ -121,8 +214,8 @@ main{padding:14px 20px;display:flex;flex-direction:column;gap:14px}
 
 /* Pills */
 .pills{display:flex;gap:6px;margin-bottom:10px}
-.pill{flex:1;background:var(--surface2);border-radius:8px;padding:7px 8px;text-align:center;}
-.pill-val{font-size:15px;font-weight:700;line-height:1;margin-bottom:2px}
+.pill{flex:1;background:var(--surface2);border-radius:9px;padding:7px 6px;text-align:center}
+.pill-val{font-size:15px;font-weight:700;line-height:1;margin-bottom:3px}
 .pill-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
 
 /* Bars */
@@ -130,8 +223,22 @@ main{padding:14px 20px;display:flex;flex-direction:column;gap:14px}
 .bar-meta{display:flex;justify-content:space-between;margin-bottom:3px;font-size:9px}
 .bar-meta .lbl{color:var(--muted)}
 .bar-meta .val{color:var(--text);font-weight:600}
-.track{height:5px;background:var(--track-bg);border-radius:3px;overflow:hidden}
-.fill{height:100%;border-radius:3px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.track{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.fill{
+  height:100%;border-radius:2px;
+  transition:width .7s cubic-bezier(.4,0,.2,1),box-shadow .3s ease;
+}
+
+/* Fill colors + glow (glow only in dark) */
+.fill-green{background:var(--green)}
+.fill-amber{background:var(--amber)}
+.fill-red  {background:var(--red)}
+.fill-blue {background:var(--blue)}
+
+[data-theme="dark"] .fill-green{box-shadow:0 0 10px var(--green)}
+[data-theme="dark"] .fill-amber{box-shadow:0 0 10px var(--amber)}
+[data-theme="dark"] .fill-red  {box-shadow:0 0 10px var(--red)}
+[data-theme="dark"] .fill-blue {box-shadow:0 0 10px var(--blue)}
 
 /* Procs */
 .procs{margin-top:9px;padding-top:9px;border-top:1px solid var(--border)}
@@ -140,17 +247,15 @@ main{padding:14px 20px;display:flex;flex-direction:column;gap:14px}
 .proc-mem{color:var(--muted);white-space:nowrap}
 .no-proc{color:var(--muted);font-size:10px;font-style:italic}
 
-/* Loading */
+/* Loading / error */
 .loader{display:flex;align-items:center;justify-content:center;gap:10px;padding:80px 0;color:var(--muted)}
-.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+.spinner{
+  width:16px;height:16px;border:2px solid var(--border);
+  border-top-color:var(--blue);border-radius:50%;
+  animation:spin .8s linear infinite;
+}
 @keyframes spin{to{transform:rotate(360deg)}}
-.err-msg{color:var(--red);text-align:center;padding:40px;font-size:12px}
-
-/* Countdown ring */
-#countdown{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted)}
-#countdown svg{transform:rotate(-90deg)}
-#cd-track{transition:stroke .25s}
-#cd-circle{stroke-dasharray:22;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear}
+.err-msg{color:var(--red);text-align:center;padding:60px 20px;font-size:12px;line-height:1.8}
 </style>
 </head>
 <body>
@@ -160,81 +265,76 @@ main{padding:14px 20px;display:flex;flex-direction:column;gap:14px}
   <div id="countdown">
     <svg width="14" height="14" viewBox="0 0 14 14">
       <circle id="cd-track" cx="7" cy="7" r="3.5" fill="none" stroke-width="2.5"/>
-      <circle id="cd-circle" cx="7" cy="7" r="3.5" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round"/>
+      <circle id="cd-circle" cx="7" cy="7" r="3.5" fill="none" stroke="var(--blue)" stroke-width="2.5" stroke-linecap="round"/>
     </svg>
     <span id="cd-text">30s</span>
   </div>
-  <button id="theme-btn" onclick="toggleTheme()" title="Toggle theme">☀</button>
-  <button id="refresh-btn" onclick="load()">↻ Refresh</button>
+  <button class="hdr-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle theme">☀</button>
+  <button class="hdr-btn" onclick="load()">↻ Refresh</button>
   <div id="status"><span class="dot" id="dot"></span><span id="status-text">loading…</span></div>
   <span id="clock"></span>
 </header>
 
 <div id="global-bar" style="display:none">
-  <div class="g-card"><div class="g-label">Machines</div><div class="g-val" id="g-machines">—</div></div>
-  <div class="g-card"><div class="g-label">Total GPUs</div><div class="g-val" id="g-gpus">—</div></div>
-  <div class="g-card"><div class="g-label">Avg Util</div><div class="g-val" id="g-util" style="color:var(--green)">—</div></div>
-  <div class="g-card"><div class="g-label">Memory Used</div><div class="g-val" id="g-mem">—</div></div>
-  <div class="g-card"><div class="g-label">Avg Temp</div><div class="g-val" id="g-temp">—</div></div>
-  <div class="g-card"><div class="g-label">Processes</div><div class="g-val" id="g-procs">—</div></div>
+  <div class="g-stat"><div class="g-val" id="g-machines">—</div><div class="g-label">Machines</div></div>
+  <div class="g-stat"><div class="g-val" id="g-gpus">—</div><div class="g-label">Total GPUs</div></div>
+  <div class="g-stat"><div class="g-val" id="g-util">—</div><div class="g-label">Avg Util</div></div>
+  <div class="g-stat"><div class="g-val" id="g-mem">—</div><div class="g-label">Memory</div></div>
+  <div class="g-stat"><div class="g-val" id="g-temp">—</div><div class="g-label">Avg Temp</div></div>
+  <div class="g-stat"><div class="g-val" id="g-procs">—</div><div class="g-label">Processes</div></div>
 </div>
 
 <main id="main"><div class="loader"><div class="spinner"></div>Loading…</div></main>
 
 <script>
-// ── Config ──────────────────────────────────────────────────────────────────
+// ── Config ───────────────────────────────────────────────────────────────────
 const DATA_BASE   = './data';
 const REFRESH_SEC = 30;
 const STALE_SEC   = 120;
 const OFFLINE_SEC = 300;
 
 // ── Theme ────────────────────────────────────────────────────────────────────
-const html      = document.documentElement;
-const themeBtn  = document.getElementById('theme-btn');
-const cdTrack   = document.getElementById('cd-track');
+const html    = document.documentElement;
+const themBtn = document.getElementById('theme-btn');
+const cdTrack = document.getElementById('cd-track');
 
-function applyTheme(theme) {
-  html.setAttribute('data-theme', theme);
-  themeBtn.textContent = theme === 'dark' ? '☀' : '☾';
-  cdTrack.setAttribute('stroke', theme === 'dark'
-    ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.1)');
-  localStorage.setItem('theme', theme);
+function applyTheme(t) {
+  html.setAttribute('data-theme', t);
+  themBtn.textContent = t === 'dark' ? '☀' : '☾';
+  cdTrack.setAttribute('stroke', t === 'dark'
+    ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.1)');
+  localStorage.setItem('theme', t);
 }
-
 function toggleTheme() {
   applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
 }
-
-// Init: respect stored preference, then OS preference
+// Init: localStorage → OS preference → dark
 (function() {
-  const stored = localStorage.getItem('theme');
-  if (stored) { applyTheme(stored); return; }
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  applyTheme(prefersDark ? 'dark' : 'light');
+  const s = localStorage.getItem('theme');
+  if (s) { applyTheme(s); return; }
+  applyTheme(matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 })();
 
-// ── Colour helpers ───────────────────────────────────────────────────────────
-const utilColor = p => p < 40 ? 'var(--green)' : p < 70 ? 'var(--amber)' : 'var(--red)';
-const memColor  = p => p < 60 ? 'var(--blue)'  : p < 80 ? 'var(--amber)' : 'var(--red)';
-const tempColor = t => t < 55 ? 'var(--blue)'  : t < 75 ? 'var(--amber)' : 'var(--red)';
+// ── Color helpers ─────────────────────────────────────────────────────────────
+const utilCls = p => p < 40 ? 'green' : p < 70 ? 'amber' : 'red';
+const memCls  = p => p < 60 ? 'blue'  : p < 80 ? 'amber' : 'red';
+const tempCls = t => t < 55 ? 'blue'  : t < 75 ? 'amber' : 'red';
+const cv      = n => `var(--${n})`;
 
-function bar(pct, colorFn) {
+function bar(pct, clsFn) {
   const p = Math.min(100, Math.max(0, pct));
-  return `<div class="track"><div class="fill" style="width:${p}%;background:${colorFn(p)}"></div></div>`;
+  return `<div class="track"><div class="fill fill-${clsFn(p)}" style="width:${p}%"></div></div>`;
 }
-
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
-
 function relTime(ts) {
   const d = Math.floor(Date.now()/1000) - ts;
-  if (d < 5)  return 'just now';
-  if (d < 60) return `${d}s ago`;
+  if (d < 5)    return 'just now';
+  if (d < 60)   return `${d}s ago`;
   if (d < 3600) return `${Math.floor(d/60)}m ago`;
   return `${Math.floor(d/3600)}h ago`;
 }
-
 function machineStatus(ts) {
   const age = Math.floor(Date.now()/1000) - ts;
   if (age < STALE_SEC)   return 'online';
@@ -244,9 +344,9 @@ function machineStatus(ts) {
 
 // ── Rendering ────────────────────────────────────────────────────────────────
 function renderGpu(g, procs, accent) {
-  const mp   = g.mem_total ? g.mem_used / g.mem_total * 100 : 0;
-  const pl   = procs[String(g.idx)] || [];
-  const accentAlpha = accent + '22';
+  const mp = g.mem_total ? g.mem_used / g.mem_total * 100 : 0;
+  const pl = procs[String(g.idx)] || [];
+  const accentFade = accent + '22';
   const procsHtml = pl.length
     ? pl.map(p => `<div class="proc"><span class="proc-name">${esc(p.name)}</span><span class="proc-mem">${p.mem} MiB</span></div>`).join('')
     : '<span class="no-proc">idle</span>';
@@ -254,44 +354,44 @@ function renderGpu(g, procs, accent) {
   return `<div class="gpu-cell">
   <div class="gpu-top">
     <span class="gpu-label">${esc(g.name)}</span>
-    <span class="gpu-idx-badge" style="background:${accentAlpha};color:${accent}">GPU ${g.idx}</span>
+    <span class="gpu-idx-badge" style="background:${accentFade};color:${accent}">GPU ${g.idx}</span>
   </div>
   <div class="pills">
     <div class="pill">
-      <div class="pill-val" style="color:${utilColor(g.util)}">${g.util}%</div>
+      <div class="pill-val" style="color:${cv(utilCls(g.util))}">${g.util}%</div>
       <div class="pill-lbl">Util</div>
     </div>
     <div class="pill">
-      <div class="pill-val" style="color:${memColor(mp)}">${(g.mem_used/1024).toFixed(1)}G</div>
+      <div class="pill-val" style="color:${cv(memCls(mp))}">${(g.mem_used/1024).toFixed(1)}G</div>
       <div class="pill-lbl">/ ${(g.mem_total/1024).toFixed(0)}G</div>
     </div>
     <div class="pill">
-      <div class="pill-val" style="color:${tempColor(g.temp)}">${g.temp}°</div>
+      <div class="pill-val" style="color:${cv(tempCls(g.temp))}">${g.temp}°</div>
       <div class="pill-lbl">Temp</div>
     </div>
   </div>
   <div class="bar-row">
     <div class="bar-meta"><span class="lbl">Utilization</span><span class="val">${g.util}%</span></div>
-    ${bar(g.util, utilColor)}
+    ${bar(g.util, utilCls)}
   </div>
   <div class="bar-row">
     <div class="bar-meta">
       <span class="lbl">Memory</span>
       <span class="val">${(g.mem_used/1024).toFixed(1)} / ${(g.mem_total/1024).toFixed(0)} GiB</span>
     </div>
-    ${bar(mp, memColor)}
+    ${bar(mp, memCls)}
   </div>
   <div class="procs">${procsHtml}</div>
 </div>`;
 }
 
 function renderMachine(d) {
-  const status = machineStatus(d.ts);
-  const accent = d.color || '#60a5fa';
+  const status  = machineStatus(d.ts);
+  const accent  = d.color || '#40c8ff';
   const gpuHtml = d.gpus.map(g => renderGpu(g, d.procs, accent)).join('');
   return `<div class="machine">
   <div class="machine-header" style="border-left:3px solid ${accent}">
-    <span class="machine-dot" style="background:${accent}"></span>
+    <span class="machine-dot" style="background:${accent};color:${accent}"></span>
     <span class="machine-name">${esc(d.hostname)}</span>
     <span class="badge ${status}">${status}</span>
     <span class="machine-time">updated ${relTime(d.ts)}</span>
@@ -309,24 +409,19 @@ async function fetchJSON(url) {
 
 async function load() {
   try {
-    const idx = await fetchJSON(`${DATA_BASE}/index.json`);
+    const idx      = await fetchJSON(`${DATA_BASE}/index.json`);
     const machines = idx.machines || [];
 
-    if (machines.length === 0) {
+    if (!machines.length) {
       document.getElementById('main').innerHTML =
         '<div class="err-msg">No machines found.<br>Start gpu_monitor.py with GITHUB_PAGES_REPO set.</div>';
       return;
     }
 
-    const results = await Promise.allSettled(
-      machines.map(h => fetchJSON(`${DATA_BASE}/${h}.json`))
-    );
-    const data = results
-      .filter(r => r.status === 'fulfilled')
-      .map(r => r.value)
-      .sort((a, b) => b.ts - a.ts);
+    const results = await Promise.allSettled(machines.map(h => fetchJSON(`${DATA_BASE}/${h}.json`)));
+    const data    = results.filter(r => r.status === 'fulfilled').map(r => r.value).sort((a,b) => b.ts - a.ts);
 
-    const totalGpus    = data.reduce((s, d) => s + d.gpus.length, 0);
+    const totalGpus    = data.reduce((s,d) => s + d.gpus.length, 0);
     const allUtils     = data.flatMap(d => d.gpus.map(g => g.util));
     const allTemps     = data.flatMap(d => d.gpus.map(g => g.temp));
     const totalMemUsed = data.flatMap(d => d.gpus).reduce((s,g) => s + g.mem_used, 0);
@@ -335,47 +430,47 @@ async function load() {
     const avgUtil      = allUtils.length ? allUtils.reduce((a,b)=>a+b,0)/allUtils.length : 0;
     const avgTemp      = allTemps.length ? allTemps.reduce((a,b)=>a+b,0)/allTemps.length : 0;
 
-    const gb = document.getElementById('global-bar');
-    gb.style.display = 'flex';
+    document.getElementById('global-bar').style.display = 'flex';
     document.getElementById('g-machines').textContent = data.length;
     document.getElementById('g-gpus').textContent     = totalGpus;
+
     const uEl = document.getElementById('g-util');
     uEl.textContent = avgUtil.toFixed(0) + '%';
-    uEl.style.color = utilColor(avgUtil);
-    document.getElementById('g-mem').textContent =
-      `${(totalMemUsed/1024).toFixed(0)}/${(totalMemTot/1024).toFixed(0)}G`;
+    uEl.style.color = cv(utilCls(avgUtil));
+
+    document.getElementById('g-mem').textContent = `${(totalMemUsed/1024).toFixed(0)}/${(totalMemTot/1024).toFixed(0)}G`;
+
     const tEl = document.getElementById('g-temp');
     tEl.textContent = avgTemp.toFixed(0) + '°C';
-    tEl.style.color = tempColor(avgTemp);
-    document.getElementById('g-procs').textContent = totalProcs;
+    tEl.style.color = cv(tempCls(avgTemp));
 
-    document.getElementById('main').innerHTML = data.map(renderMachine).join('');
-    document.getElementById('dot').className = 'dot';
+    document.getElementById('g-procs').textContent  = totalProcs;
+    document.getElementById('main').innerHTML        = data.map(renderMachine).join('');
+    document.getElementById('dot').className         = 'dot';
     document.getElementById('status-text').textContent = `${data.length} machine${data.length!==1?'s':''}`;
-  } catch (e) {
+
+  } catch(e) {
     document.getElementById('dot').className = 'dot err';
     document.getElementById('status-text').textContent = 'error';
     document.getElementById('main').innerHTML =
-      `<div class="err-msg">Failed to load data.<br><small>${esc(String(e))}</small><br><br>` +
+      `<div class="err-msg">Failed to load data.<br><small>${esc(String(e))}</small><br>` +
       `Make sure GitHub Pages is enabled and GITHUB_PAGES_REPO is set in your .env</div>`;
   }
 }
 
 // ── Clock & countdown ─────────────────────────────────────────────────────────
-let _remaining = REFRESH_SEC;
-const _circ   = document.getElementById('cd-circle');
-const _cdText = document.getElementById('cd-text');
+let _rem  = REFRESH_SEC;
+const _c  = document.getElementById('cd-circle');
+const _ct = document.getElementById('cd-text');
 const DASH = 22;
 
 setInterval(() => {
   const n = new Date();
-  document.getElementById('clock').textContent =
-    n.toLocaleDateString() + ' ' + n.toLocaleTimeString();
-
-  _remaining--;
-  if (_remaining <= 0) { _remaining = REFRESH_SEC; load(); }
-  _cdText.textContent = _remaining + 's';
-  _circ.style.strokeDashoffset = DASH * (1 - _remaining / REFRESH_SEC);
+  document.getElementById('clock').textContent = n.toLocaleDateString() + ' ' + n.toLocaleTimeString();
+  _rem--;
+  if (_rem <= 0) { _rem = REFRESH_SEC; load(); }
+  _ct.textContent = _rem + 's';
+  _c.style.strokeDashoffset = DASH * (1 - _rem / REFRESH_SEC);
 }, 1000);
 
 setInterval(() => {
