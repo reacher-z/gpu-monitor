@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GPU Monitor</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0b12;
+  --surface:#12121c;
+  --surface2:#18182a;
+  --border:rgba(255,255,255,.07);
+  --text:#e2e8f0;
+  --muted:#4a5568;
+  --green:#22c55e;
+  --amber:#f59e0b;
+  --red:#ef4444;
+  --blue:#60a5fa;
+}
+body{background:var(--bg);color:var(--text);font-family:ui-monospace,'SF Mono','Cascadia Code',monospace;font-size:13px;min-height:100vh}
+
+/* Header */
+header{
+  display:flex;align-items:center;gap:14px;padding:12px 20px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:10;
+}
+.logo{font-size:14px;font-weight:700;letter-spacing:.04em;color:#e2e8f0}
+.logo span{color:#60a5fa}
+.spacer{flex:1}
+#refresh-btn{
+  background:none;border:1px solid var(--border);color:var(--muted);
+  border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;
+  font-family:inherit;transition:border-color .2s,color .2s;
+}
+#refresh-btn:hover{border-color:var(--blue);color:var(--blue)}
+#status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-left:8px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0}
+.dot.stale{background:var(--amber)}
+.dot.err{background:var(--red)}
+#clock{color:var(--muted);font-size:11px;margin-left:10px}
+
+/* Global summary */
+#global-bar{
+  display:flex;gap:0;padding:0 20px;margin:14px 0 0;flex-wrap:wrap;gap:10px;
+}
+.g-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:10px 16px;display:flex;flex-direction:column;gap:3px;min-width:120px;
+}
+.g-label{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.g-val{font-size:20px;font-weight:700}
+
+/* Machine sections */
+main{padding:14px 20px;display:flex;flex-direction:column;gap:14px}
+
+.machine{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;
+}
+.machine-header{
+  display:flex;align-items:center;gap:12px;padding:12px 16px;
+  border-bottom:1px solid var(--border);
+}
+.machine-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.machine-name{font-weight:700;font-size:13px}
+.machine-time{color:var(--muted);font-size:10px;margin-left:auto}
+.badge{
+  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
+  padding:2px 7px;border-radius:20px;
+}
+.badge.online{background:rgba(34,197,94,.15);color:var(--green)}
+.badge.stale{background:rgba(245,158,11,.15);color:var(--amber)}
+.badge.offline{background:rgba(239,68,68,.15);color:var(--red)}
+
+/* GPU grid inside machine */
+.gpu-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  gap:1px;background:var(--border);
+}
+.gpu-cell{
+  background:var(--surface);padding:14px 16px;
+}
+.gpu-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.gpu-label{font-size:10px;color:var(--muted)}
+.gpu-idx-badge{
+  font-size:9px;font-weight:700;padding:2px 7px;border-radius:5px;
+  background:var(--surface2);color:var(--muted);
+}
+
+/* Pills */
+.pills{display:flex;gap:6px;margin-bottom:10px}
+.pill{
+  flex:1;background:var(--surface2);border-radius:8px;
+  padding:7px 8px;text-align:center;
+}
+.pill-val{font-size:15px;font-weight:700;line-height:1;margin-bottom:2px}
+.pill-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+
+/* Bars */
+.bar-row{margin-bottom:7px}
+.bar-meta{display:flex;justify-content:space-between;margin-bottom:3px;font-size:9px}
+.bar-meta .lbl{color:var(--muted)}
+.bar-meta .val{color:var(--text);font-weight:600}
+.track{height:5px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden}
+.fill{height:100%;border-radius:3px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+
+/* Procs */
+.procs{margin-top:9px;padding-top:9px;border-top:1px solid var(--border)}
+.proc{display:flex;justify-content:space-between;padding:2px 0;font-size:10px;gap:6px}
+.proc-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--text)}
+.proc-mem{color:var(--muted);white-space:nowrap}
+.no-proc{color:var(--muted);font-size:10px;font-style:italic}
+
+/* Loading */
+.loader{display:flex;align-items:center;justify-content:center;gap:10px;padding:80px 0;color:var(--muted)}
+.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err-msg{color:var(--red);text-align:center;padding:40px;font-size:12px}
+
+/* Countdown ring */
+#countdown{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted)}
+#countdown svg{transform:rotate(-90deg)}
+#cd-circle{stroke-dasharray:22;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">◈ gpu<span>monitor</span></div>
+  <span class="spacer"></span>
+  <div id="countdown">
+    <svg width="14" height="14" viewBox="0 0 14 14">
+      <circle cx="7" cy="7" r="3.5" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="2.5"/>
+      <circle id="cd-circle" cx="7" cy="7" r="3.5" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    <span id="cd-text">30s</span>
+  </div>
+  <button id="refresh-btn" onclick="load()">↻ Refresh</button>
+  <div id="status"><span class="dot" id="dot"></span><span id="status-text">loading…</span></div>
+  <span id="clock"></span>
+</header>
+
+<div id="global-bar" style="display:none">
+  <div class="g-card"><div class="g-label">Machines</div><div class="g-val" id="g-machines">—</div></div>
+  <div class="g-card"><div class="g-label">Total GPUs</div><div class="g-val" id="g-gpus">—</div></div>
+  <div class="g-card"><div class="g-label">Avg Util</div><div class="g-val" id="g-util" style="color:var(--green)">—</div></div>
+  <div class="g-card"><div class="g-label">Memory Used</div><div class="g-val" id="g-mem">—</div></div>
+  <div class="g-card"><div class="g-label">Avg Temp</div><div class="g-val" id="g-temp">—</div></div>
+  <div class="g-card"><div class="g-label">Processes</div><div class="g-val" id="g-procs">—</div></div>
+</div>
+
+<main id="main"><div class="loader"><div class="spinner"></div>Loading…</div></main>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────────────────
+// If your data files are at a different path, adjust DATA_BASE:
+const DATA_BASE = './data';
+const REFRESH_SEC = 30;
+const STALE_SEC   = 120;   // machine considered stale after 2 min
+const OFFLINE_SEC = 300;   // machine considered offline after 5 min
+
+// ── Colour helpers ───────────────────────────────────────────────────────────
+const utilColor = p => p < 40 ? 'var(--green)' : p < 70 ? 'var(--amber)' : 'var(--red)';
+const memColor  = p => p < 60 ? 'var(--blue)'  : p < 80 ? 'var(--amber)' : 'var(--red)';
+const tempColor = t => t < 55 ? 'var(--blue)'  : t < 75 ? 'var(--amber)' : 'var(--red)';
+
+function bar(pct, colorFn) {
+  const p = Math.min(100, Math.max(0, pct));
+  return `<div class="track"><div class="fill" style="width:${p}%;background:${colorFn(p)}"></div></div>`;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function relTime(ts) {
+  const d = Math.floor(Date.now()/1000) - ts;
+  if (d < 5)  return 'just now';
+  if (d < 60) return `${d}s ago`;
+  if (d < 3600) return `${Math.floor(d/60)}m ago`;
+  return `${Math.floor(d/3600)}h ago`;
+}
+
+function machineStatus(ts) {
+  const age = Math.floor(Date.now()/1000) - ts;
+  if (age < STALE_SEC)   return 'online';
+  if (age < OFFLINE_SEC) return 'stale';
+  return 'offline';
+}
+
+// ── Rendering ────────────────────────────────────────────────────────────────
+function renderGpu(g, procs, accent) {
+  const mp   = g.mem_total ? g.mem_used / g.mem_total * 100 : 0;
+  const pl   = procs[String(g.idx)] || [];
+  const accentAlpha = accent + '22';
+  const procsHtml = pl.length
+    ? pl.map(p => `<div class="proc"><span class="proc-name">${esc(p.name)}</span><span class="proc-mem">${p.mem} MiB</span></div>`).join('')
+    : '<span class="no-proc">idle</span>';
+
+  return `<div class="gpu-cell">
+  <div class="gpu-top">
+    <span class="gpu-label">${esc(g.name)}</span>
+    <span class="gpu-idx-badge" style="background:${accentAlpha};color:${accent}">GPU ${g.idx}</span>
+  </div>
+  <div class="pills">
+    <div class="pill">
+      <div class="pill-val" style="color:${utilColor(g.util)}">${g.util}%</div>
+      <div class="pill-lbl">Util</div>
+    </div>
+    <div class="pill">
+      <div class="pill-val" style="color:${memColor(mp)}">${(g.mem_used/1024).toFixed(1)}G</div>
+      <div class="pill-lbl">/ ${(g.mem_total/1024).toFixed(0)}G</div>
+    </div>
+    <div class="pill">
+      <div class="pill-val" style="color:${tempColor(g.temp)}">${g.temp}°</div>
+      <div class="pill-lbl">Temp</div>
+    </div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-meta"><span class="lbl">Utilization</span><span class="val">${g.util}%</span></div>
+    ${bar(g.util, utilColor)}
+  </div>
+  <div class="bar-row">
+    <div class="bar-meta">
+      <span class="lbl">Memory</span>
+      <span class="val">${(g.mem_used/1024).toFixed(1)} / ${(g.mem_total/1024).toFixed(0)} GiB</span>
+    </div>
+    ${bar(mp, memColor)}
+  </div>
+  <div class="procs">${procsHtml}</div>
+</div>`;
+}
+
+function renderMachine(d) {
+  const status = machineStatus(d.ts);
+  const accent = d.color || '#60a5fa';
+  const gpuHtml = d.gpus.map(g => renderGpu(g, d.procs, accent)).join('');
+  return `<div class="machine">
+  <div class="machine-header" style="border-left:3px solid ${accent}">
+    <span class="machine-dot" style="background:${accent}"></span>
+    <span class="machine-name">${esc(d.hostname)}</span>
+    <span class="badge ${status}">${status}</span>
+    <span class="machine-time">updated ${relTime(d.ts)}</span>
+  </div>
+  <div class="gpu-grid">${gpuHtml || '<div style="padding:16px;color:var(--muted)">No GPUs found</div>'}</div>
+</div>`;
+}
+
+// ── Data fetching ─────────────────────────────────────────────────────────────
+async function fetchJSON(url) {
+  const r = await fetch(url + '?_=' + Date.now(), { cache: 'no-store' });
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+
+async function load() {
+  try {
+    // 1. Get machine list
+    const idx = await fetchJSON(`${DATA_BASE}/index.json`);
+    const machines = idx.machines || [];
+
+    if (machines.length === 0) {
+      document.getElementById('main').innerHTML =
+        '<div class="err-msg">No machines found.<br>Start gpu_monitor.py with GITHUB_PAGES_REPO set.</div>';
+      return;
+    }
+
+    // 2. Fetch all machine stats in parallel
+    const results = await Promise.allSettled(
+      machines.map(h => fetchJSON(`${DATA_BASE}/${h}.json`))
+    );
+    const data = results
+      .filter(r => r.status === 'fulfilled')
+      .map(r => r.value)
+      .sort((a, b) => b.ts - a.ts);  // newest first
+
+    // 3. Global summary
+    const totalGpus   = data.reduce((s, d) => s + d.gpus.length, 0);
+    const allUtils    = data.flatMap(d => d.gpus.map(g => g.util));
+    const allTemps    = data.flatMap(d => d.gpus.map(g => g.temp));
+    const totalMemUsed  = data.flatMap(d => d.gpus).reduce((s,g) => s + g.mem_used, 0);
+    const totalMemTotal = data.flatMap(d => d.gpus).reduce((s,g) => s + g.mem_total, 0);
+    const totalProcs  = data.reduce((s,d) => s + Object.values(d.procs).flat().length, 0);
+    const avgUtil     = allUtils.length ? allUtils.reduce((a,b)=>a+b,0)/allUtils.length : 0;
+    const avgTemp     = allTemps.length ? allTemps.reduce((a,b)=>a+b,0)/allTemps.length : 0;
+
+    const gb = document.getElementById('global-bar');
+    gb.style.display = 'flex';
+    document.getElementById('g-machines').textContent = data.length;
+    document.getElementById('g-gpus').textContent     = totalGpus;
+    const uEl = document.getElementById('g-util');
+    uEl.textContent  = avgUtil.toFixed(0) + '%';
+    uEl.style.color  = utilColor(avgUtil);
+    document.getElementById('g-mem').textContent =
+      `${(totalMemUsed/1024).toFixed(0)}/${(totalMemTotal/1024).toFixed(0)}G`;
+    const tEl = document.getElementById('g-temp');
+    tEl.textContent = avgTemp.toFixed(0) + '°C';
+    tEl.style.color = tempColor(avgTemp);
+    document.getElementById('g-procs').textContent = totalProcs;
+
+    // 4. Render machines
+    document.getElementById('main').innerHTML = data.map(renderMachine).join('');
+
+    document.getElementById('dot').className = 'dot';
+    document.getElementById('status-text').textContent = `${data.length} machine${data.length!==1?'s':''}`;
+  } catch (e) {
+    document.getElementById('dot').className = 'dot err';
+    document.getElementById('status-text').textContent = 'error';
+    document.getElementById('main').innerHTML =
+      `<div class="err-msg">Failed to load data.<br><small>${esc(String(e))}</small><br><br>` +
+      `Make sure GitHub Pages is enabled and GITHUB_PAGES_REPO is set in your .env</div>`;
+  }
+}
+
+// ── Clock & countdown ─────────────────────────────────────────────────────────
+let _remaining = REFRESH_SEC;
+const _circ = document.getElementById('cd-circle');
+const _cdText = document.getElementById('cd-text');
+const DASH = 22;
+
+setInterval(() => {
+  const n = new Date();
+  document.getElementById('clock').textContent =
+    n.toLocaleDateString() + ' ' + n.toLocaleTimeString();
+
+  _remaining--;
+  if (_remaining <= 0) { _remaining = REFRESH_SEC; load(); }
+  _cdText.textContent = _remaining + 's';
+  _circ.style.strokeDashoffset = DASH * (1 - _remaining / REFRESH_SEC);
+}, 1000);
+
+// Also update relative times every 5s without re-fetching
+setInterval(() => {
+  document.querySelectorAll('[data-ts]').forEach(el => {
+    el.textContent = 'updated ' + relTime(+el.dataset.ts);
+  });
+}, 5000);
+
+load();
+</script>
+</body>
+</html>

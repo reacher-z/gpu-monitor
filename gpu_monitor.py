@@ -84,6 +84,10 @@ TWILIO_FROM         = os.environ.get("TWILIO_FROM",         "")
 TWILIO_TO           = os.environ.get("TWILIO_TO",           "")   # comma-separated
 IMESSAGE_TO         = os.environ.get("IMESSAGE_TO",         "")   # comma-separated
 
+# GitHub Pages dashboard (optional)
+GITHUB_PAGES_TOKEN = os.environ.get("GITHUB_PAGES_TOKEN", "")
+GITHUB_PAGES_REPO  = os.environ.get("GITHUB_PAGES_REPO",  "")  # e.g. owner/repo
+
 
 # ---------------------------------------------------------------------------
 # GPU queries
@@ -620,6 +624,98 @@ def _start_dashboard(port: int) -> None:
 
 
 # ---------------------------------------------------------------------------
+# GitHub Pages — push stats as JSON so the static dashboard can read them
+# ---------------------------------------------------------------------------
+def _gh_update_file(token: str, repo: str, path: str, content: bytes, message: str) -> bool:
+    """Create or update a file in a GitHub repo via the Contents API."""
+    api = f"https://api.github.com/repos/{repo}/contents/{path}"
+    hdrs = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json",
+    }
+    # Fetch current SHA (needed for updates; 404 means new file)
+    sha = None
+    try:
+        req = urllib.request.Request(api, headers=hdrs)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            sha = json.loads(resp.read())["sha"]
+    except urllib.error.HTTPError as e:
+        if e.code != 404:
+            raise
+    payload: dict = {"message": message, "content": b64encode(content).decode()}
+    if sha:
+        payload["sha"] = sha
+    req = urllib.request.Request(api, data=json.dumps(payload).encode(), headers=hdrs, method="PUT")
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        return resp.status in (200, 201)
+
+
+def push_stats_to_github(gpus: list[dict], procs: dict) -> None:
+    """Push current GPU stats to GitHub Pages repo (best-effort, never raises)."""
+    if not GITHUB_PAGES_TOKEN or not GITHUB_PAGES_REPO:
+        return
+    try:
+        stats = {
+            "hostname": HOSTNAME,
+            "color":    MACHINE_COLOR,
+            "ts":       int(time.time()),
+            "time":     datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "gpus":     gpus,
+            "procs":    {str(k): v for k, v in procs.items()},
+        }
+        _gh_update_file(
+            GITHUB_PAGES_TOKEN, GITHUB_PAGES_REPO,
+            f"docs/data/{HOSTNAME}.json",
+            json.dumps(stats, separators=(",", ":")).encode(),
+            f"stats: {HOSTNAME}",
+        )
+        # Update index.json (list of known machines), retry once on SHA conflict
+        _update_index(GITHUB_PAGES_TOKEN, GITHUB_PAGES_REPO)
+    except Exception as e:
+        logger.debug(f"GitHub Pages push failed: {e}")
+
+
+def _update_index(token: str, repo: str) -> None:
+    """Add this machine to docs/data/index.json if not already listed."""
+    api = f"https://api.github.com/repos/{repo}/contents/docs/data/index.json"
+    hdrs = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json",
+    }
+    for _ in range(2):  # retry once on SHA conflict
+        sha, machines = None, []
+        try:
+            req = urllib.request.Request(api, headers=hdrs)
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read())
+                sha = data["sha"]
+                machines = json.loads(b64encode(data["content"].encode()).decode()
+                                      if False else
+                                      __import__("base64").b64decode(data["content"]))["machines"]
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                return
+        if HOSTNAME in machines:
+            return
+        machines.append(HOSTNAME)
+        payload: dict = {
+            "message": f"index: add {HOSTNAME}",
+            "content": b64encode(json.dumps({"machines": machines}).encode()).decode(),
+        }
+        if sha:
+            payload["sha"] = sha
+        try:
+            req = urllib.request.Request(api, data=json.dumps(payload).encode(), headers=hdrs, method="PUT")
+            with urllib.request.urlopen(req, timeout=15):
+                return
+        except urllib.error.HTTPError as e:
+            if e.code != 409:  # 409 = SHA conflict, retry
+                return
+
+
+# ---------------------------------------------------------------------------
 # Monitor loop
 # ---------------------------------------------------------------------------
 def _fmt_duration(seconds: float) -> str:
@@ -679,6 +775,9 @@ def monitor():
             notify(f":rocket: *Monitor started* | " + format_status(gpus, get_procs()))
             last_status_time = now
             startup = False
+
+        # Push to GitHub Pages dashboard (non-blocking best-effort)
+        push_stats_to_github(gpus, get_procs())
 
         all_idle = all(g["util"] < IDLE_THRESHOLD for g in gpus)
 
