@@ -8,7 +8,7 @@
 
 **Your training crashed at 3AM. Six hours of wasted compute. You find out in the morning.**
 
-gpu-monitor catches it the moment it happens and alerts you — crash, overheat, memory leak, hung worker, ECC error.
+gpu-monitor catches it the moment it happens and alerts you — crash, OOM, overheat, memory leak, hung worker, ECC error, fan failure, GPU hardware drop.
 
 **One Python file. Zero dependencies. [20 notification channels](#supported-notification-channels).**
 
@@ -684,7 +684,7 @@ If you use gpu-monitor in your research or infrastructure work, please cite it:
 
 ```bibtex
 @software{gpu_monitor,
-  author = {reacher-z},
+  author = {Zhang, Yuxuan},
   title  = {gpu-monitor: Lightweight NVIDIA GPU Monitor with Multi-Channel Alerting},
   year   = {2026},
   url    = {https://github.com/reacher-z/gpu-monitor},

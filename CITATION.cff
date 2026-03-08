@@ -11,8 +11,9 @@ abstract: >
   and power throttle alerting, Alertmanager webhook receiver, live terminal view,
   Kubernetes DaemonSet, and GitHub Pages multi-machine dashboard.
 authors:
-  - alias: reacher-z
-    name: "reacher-z"
+  - family-names: Zhang
+    given-names: Yuxuan
+    alias: reacher-z
 repository-code: "https://github.com/reacher-z/gpu-monitor"
 url: "https://github.com/reacher-z/gpu-monitor"
 license: MIT

@@ -773,7 +773,7 @@ footer a:hover{color:var(--blue)}
       <span class="welcome-icon" aria-hidden="true">◈</span>
       <h1><span class="hero-brand">gpu-monitor</span></h1>
       <p class="hero-punch">Your A100 runs at 3AM. You're asleep.<br>gpu-monitor is watching.</p>
-      <p>Single Python file. Zero infrastructure. Track utilization, memory, temperature, and processes across your entire GPU fleet — with instant alerts to 20 notification channels when something goes wrong.</p>
+      <p>Single Python file. Zero infrastructure. Track utilization, memory, temperature, and processes across your entire GPU fleet — instant alerts to 20 channels on crash, OOM, overheat, memory leak, hung worker, ECC error, fan failure, or GPU hardware drop.</p>
 
       <!-- Achievement stats -->
       <div class="hero-stats">
@@ -883,7 +883,7 @@ footer a:hover{color:var(--blue)}
           <span class="term-dot y"></span>
           <span class="term-dot g"></span>
         </div>
-        <span class="term-title">python gpu_monitor.py --watch</span>
+        <span class="term-title">gpu-monitor --watch</span>
       </div>
       <div class="term-body" role="img" aria-label="Terminal output showing GPU utilization table with four A100 GPUs">
 <span class="t-dim">◈ gpu-monitor v0.3.0  —  rig-01  —  2026-03-08 03:14:22</span>
@@ -915,14 +915,10 @@ footer a:hover{color:var(--blue)}
             <div class="setup-step">
               <div class="step-num" aria-hidden="true">1</div>
               <div class="step-body">
-                <strong>Install &amp; download</strong>
+                <strong>Install</strong>
                 <div class="code-block">
-                  <code>pip install pynvml requests</code>
-                  <button class="copy-btn" onclick="copyCode(this,'pip install pynvml requests')">copy</button>
-                </div>
-                <div class="code-block">
-                  <code>curl -O https://raw.githubusercontent.com/reacher-z/gpu-monitor/main/gpu_monitor.py</code>
-                  <button class="copy-btn" onclick="copyCode(this,'curl -O https://raw.githubusercontent.com/reacher-z/gpu-monitor/main/gpu_monitor.py')">copy</button>
+                  <code>pip install gpuwatch</code>
+                  <button class="copy-btn" onclick="copyCode(this,'pip install gpuwatch')">copy</button>
                 </div>
               </div>
             </div>
@@ -947,15 +943,15 @@ export GITHUB_PAGES_TOKEN=ghp_...</code>
               <div class="step-body">
                 <strong>Run on each machine</strong>
                 <div class="code-block">
-                  <code>python gpu_monitor.py</code>
-                  <button class="copy-btn" onclick="copyCode(this,'python gpu_monitor.py')">copy</button>
+                  <code>gpu-monitor</code>
+                  <button class="copy-btn" onclick="copyCode(this,'gpu-monitor')">copy</button>
                 </div>
                 Stats push every 60 seconds and appear on this dashboard automatically. Add Slack alerts with one extra env var:
                 <div class="code-block" style="margin-top:8px">
                   <code>export SLACK_WEBHOOK_URL=https://hooks.slack.com/...</code>
                   <button class="copy-btn" onclick="copyCode(this,'export SLACK_WEBHOOK_URL=https://hooks.slack.com/...')">copy</button>
                 </div>
-                Run <code class="inline">python gpu_monitor.py --channels</code> to see all 20 options.
+                Run <code class="inline">gpu-monitor --channels</code> to see all 20 options.
               </div>
             </div>
           </li>

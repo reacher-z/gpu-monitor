@@ -122,6 +122,11 @@ MEMLEAK_MINUTES   = int(os.environ.get("MEMLEAK_MINUTES",   "10"))  # window to 
 # Temperature alerting (0 = disabled)
 GPU_TEMP_WARN = int(os.environ.get("GPU_TEMP_WARN", "85"))  # °C — warning alert
 GPU_TEMP_CRIT = int(os.environ.get("GPU_TEMP_CRIT", "92"))  # °C — critical alert
+# High memory utilization alerting (OOM warning)
+GPU_MEM_WARN = int(os.environ.get("GPU_MEM_WARN", "90"))    # % — warn (approaching OOM)
+GPU_MEM_CRIT = int(os.environ.get("GPU_MEM_CRIT", "98"))    # % — critical (OOM imminent)
+# Fan failure detection: alert when fan=0% while GPU temp is above this threshold
+GPU_FAN_FAIL_TEMP = int(os.environ.get("GPU_FAN_FAIL_TEMP", "70"))  # °C (0 = disabled)
 # Generic alert webhook — receives a POST with JSON body for every alert
 ALERT_WEBHOOK_URL = os.environ.get("ALERT_WEBHOOK_URL", "")
 # InfluxDB — write GPU metrics in line protocol format
@@ -1545,6 +1550,12 @@ def monitor():
     _power_alerted: set[int] = set()
     # ECC error tracking: {gpu_idx: last_known_count}
     _ecc_prev: dict[int, int] = {}
+    # High memory utilization alerting: {gpu_idx: 'warn' | 'crit'}
+    _mem_pct_alerted: dict[int, str] = {}
+    # Fan failure detection: set of GPU indices currently flagged
+    _fan_fail_alerted: set[int] = set()
+    # GPU count tracking (detect GPU dropped off PCIe bus)
+    _prev_gpu_count: int | None = None
 
     channels = [c for c, v in [
         ("Slack",          SLACK_WEBHOOK_URL),
@@ -1795,6 +1806,61 @@ def monitor():
                     color="#e01e5a",
                 )
             _ecc_prev[idx] = errs
+
+        # --- GPU count drop (GPU fell off PCIe bus / hardware failure) ---
+        if _prev_gpu_count is not None and len(gpus) < _prev_gpu_count:
+            dropped = _prev_gpu_count - len(gpus)
+            logger.error(f"{dropped} GPU(s) disappeared from nvidia-smi ({_prev_gpu_count} → {len(gpus)})")
+            notify(
+                f":boom: *{dropped} GPU(s) disappeared* — was {_prev_gpu_count}, now {len(gpus)}. "
+                f"GPU may have fallen off PCIe bus. Check `dmesg` and hardware.",
+                color="#e01e5a",
+            )
+        _prev_gpu_count = len(gpus)
+
+        # --- High memory utilization / OOM warning ---
+        if GPU_MEM_WARN > 0:
+            for g in gpus:
+                idx = g["idx"]
+                mp = round(g["mem_used"] / g["mem_total"] * 100) if g["mem_total"] else 0
+                alerted = _mem_pct_alerted.get(idx, "")
+                if mp >= GPU_MEM_CRIT and alerted != "crit":
+                    logger.warning(f"GPU{idx}: memory critical {mp}% ({g['mem_used']}/{g['mem_total']} MiB) — OOM imminent")
+                    notify(
+                        f":sos: *GPU{idx} memory critical* — {mp}% used "
+                        f"({g['mem_used']//1024}G/{g['mem_total']//1024}G). OOM crash imminent.",
+                        color="#e01e5a",
+                    )
+                    _mem_pct_alerted[idx] = "crit"
+                elif mp >= GPU_MEM_WARN and alerted not in ("warn", "crit"):
+                    logger.warning(f"GPU{idx}: memory high {mp}% ({g['mem_used']}/{g['mem_total']} MiB)")
+                    notify(
+                        f":warning: *GPU{idx} high memory* — {mp}% used "
+                        f"({g['mem_used']//1024}G/{g['mem_total']//1024}G). Approaching OOM.",
+                        color="#ecb22e",
+                    )
+                    _mem_pct_alerted[idx] = "warn"
+                elif mp < GPU_MEM_WARN - 5:
+                    _mem_pct_alerted.pop(idx, None)
+
+        # --- Fan failure detection (fan=0% while GPU is hot) ---
+        if GPU_FAN_FAIL_TEMP > 0:
+            for g in gpus:
+                idx = g["idx"]
+                fan = g.get("fan_speed")
+                temp = g["temp"]
+                if fan is None:
+                    continue
+                if fan == 0 and temp >= GPU_FAN_FAIL_TEMP and idx not in _fan_fail_alerted:
+                    logger.error(f"GPU{idx}: fan speed 0% at {temp}°C — possible fan failure")
+                    notify(
+                        f":warning: *GPU{idx} fan failure?* — fan at 0% while temp is {temp}°C. "
+                        f"Check hardware immediately.",
+                        color="#e01e5a",
+                    )
+                    _fan_fail_alerted.add(idx)
+                elif fan > 0 or temp < GPU_FAN_FAIL_TEMP - 5:
+                    _fan_fail_alerted.discard(idx)
 
         time.sleep(CHECK_INTERVAL)
 
