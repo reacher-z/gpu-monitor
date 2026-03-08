@@ -118,11 +118,10 @@ gpu-cluster-1 | 2026-03-07 15:01 | avg 2% | 38C | idle 8min
 All GPUs idle for 8 minutes. Last active: training job (alice)
 ```
 
-**Crash detection alert:**
+**Crash detection alert (PIDs disappeared while GPUs were busy):**
 
 ```
-gpu-cluster-1 | CRASH DETECTED: 3 training processes vanished (PIDs: 12345, 12346, 12347)
-GPUs went from 87% → 1% with no graceful exit. Check your logs.
+gpu-cluster-1 | GPUs went idle — processes exited: 12345, 12346, 12347 | avg 1% | 38C | mem 2G/320G (1%)
 ```
 
 **`--test-notify` output:**
@@ -146,6 +145,7 @@ Not configured:           Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTal
 | `STATUS_IDLE` | `30` | Report interval when idle (min) |
 | `MACHINE_COLOR` | auto | Hex color for Slack/Discord |
 | `LOG_FILE` | — | Log file path (enables rotation) |
+| `WEB_PORT` | — | Local dashboard + `/metrics` port (disabled if unset) |
 
 ### Slack
 

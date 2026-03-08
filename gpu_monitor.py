@@ -1157,16 +1157,24 @@ def monitor():
     prev_pids: set[str] = set()
 
     channels = [c for c, v in [
-        ("Slack",    SLACK_WEBHOOK_URL),
-        ("Discord",  DISCORD_WEBHOOK_URL),
-        ("Telegram", TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID),
-        ("Email",    EMAIL_SMTP_HOST and EMAIL_TO),
-        ("SMS",      TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM and TWILIO_TO),
-        ("iMessage", IMESSAGE_TO and sys.platform == "darwin"),
-        ("WeCom",    WECOM_WEBHOOK_URL),
-        ("Feishu",   FEISHU_WEBHOOK_URL),
-        ("DingTalk", DINGTALK_WEBHOOK_URL),
-        ("Bark",     BARK_URL),
+        ("Slack",        SLACK_WEBHOOK_URL),
+        ("Discord",      DISCORD_WEBHOOK_URL),
+        ("Telegram",     TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID),
+        ("Email",        EMAIL_SMTP_HOST and EMAIL_TO),
+        ("SMS",          TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM and TWILIO_TO),
+        ("iMessage",     IMESSAGE_TO and sys.platform == "darwin"),
+        ("WeCom",        WECOM_WEBHOOK_URL),
+        ("Feishu",       FEISHU_WEBHOOK_URL),
+        ("DingTalk",     DINGTALK_WEBHOOK_URL),
+        ("Bark",         BARK_URL),
+        ("ntfy",         NTFY_URL),
+        ("Gotify",       GOTIFY_URL and GOTIFY_TOKEN),
+        ("Pushover",     PUSHOVER_TOKEN and PUSHOVER_USER),
+        ("Mattermost",   MATTERMOST_WEBHOOK_URL),
+        ("Teams",        TEAMS_WEBHOOK_URL),
+        ("Google Chat",  GOOGLE_CHAT_WEBHOOK_URL),
+        ("Zulip",        ZULIP_SITE and ZULIP_EMAIL and ZULIP_API_KEY),
+        ("OpenClaw",     OPENCLAW_WEBHOOK_URL),
     ] if v]
 
     logger.info(

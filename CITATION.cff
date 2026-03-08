@@ -3,11 +3,11 @@ message: "If you use gpu-monitor in your research, please cite it as below."
 type: software
 title: "gpu-monitor"
 abstract: >
-  A lightweight, single-file NVIDIA GPU monitor with zero dependencies.
-  Supports 15 notification channels (Slack, Discord, Telegram, Email, SMS,
-  WeCom, Feishu, DingTalk, Bark, ntfy, Gotify, Pushover, Microsoft Teams,
-  OpenClaw, iMessage), Prometheus metrics, process crash detection, and a
-  real-time GitHub Pages dashboard for multi-machine setups.
+  A lightweight, single-file NVIDIA GPU monitor with zero external dependencies.
+  Supports 18 notification channels (Slack, Discord, Telegram, Email, SMS,
+  iMessage, WeCom, Feishu, DingTalk, Bark, ntfy, Gotify, Pushover, Mattermost,
+  Microsoft Teams, Google Chat, Zulip, OpenClaw), Prometheus /metrics endpoint,
+  process crash detection, GitHub Pages multi-machine dashboard, and Docker support.
 authors:
   - alias: reacher-z
     name: "reacher-z"
