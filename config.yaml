@@ -1,10 +1,102 @@
-# GPU Monitor Configuration
-# All settings can be overridden by environment variables.
-# This file is for reference only – the script reads env vars directly.
+# GPU Monitor Configuration Reference
+# All settings are configured via environment variables.
+# This file documents every available variable with its default value.
+#
+# Usage:
+#   export SLACK_WEBHOOK_URL="..."
+#   python gpu_monitor.py
+#
+# Or put vars in a .env file and load it:
+#   set -a; source .env; set +a; python gpu_monitor.py
 
-# SLACK_WEBHOOK_URL   - Slack incoming webhook for alerts
-# CHECK_INTERVAL      - Polling interval in seconds (default: 60)
-# IDLE_THRESHOLD      - Alert when utilization below this % (default: 10)
-# IDLE_MINUTES        - Minutes below threshold before alerting (default: 5)
-# ALERT_COOLDOWN      - Minutes between repeated alerts (default: 30)
-# SLASH_CMD_PORT      - HTTP port for Slack slash command (default: 9876)
+# ── General ──────────────────────────────────────────────────────────────────
+# CHECK_INTERVAL=60        # Seconds between GPU polls
+# IDLE_THRESHOLD=10        # Alert when avg utilization drops below this %
+# IDLE_MINUTES=5           # Minutes below threshold before first alert
+# ALERT_COOLDOWN=30        # Minutes between repeated idle alerts
+# STATUS_ACTIVE=10         # Periodic status report interval when active (min)
+# STATUS_IDLE=30           # Periodic status report interval when idle (min)
+# MACHINE_COLOR=           # Hex color for Slack/Discord sidebar (auto-assigned if empty)
+# LOG_FILE=                # Path to log file (enables 5 MB rotation); empty = stdout only
+# WEB_PORT=0               # Local web dashboard port; 0 = disabled
+
+# ── Notification Channels (configure one or more) ────────────────────────────
+
+# Slack
+# SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+
+# Discord
+# DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR/WEBHOOK
+
+# Telegram
+# TELEGRAM_BOT_TOKEN=your-bot-token
+# TELEGRAM_CHAT_ID=your-chat-id
+
+# Email (SMTP / STARTTLS)
+# EMAIL_SMTP_HOST=smtp.gmail.com
+# EMAIL_SMTP_PORT=587
+# EMAIL_USER=you@gmail.com
+# EMAIL_PASS=your-app-password
+# EMAIL_TO=recipient@example.com          # comma-separated
+
+# SMS via Twilio
+# TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# TWILIO_AUTH_TOKEN=your-auth-token
+# TWILIO_FROM=+15550000000
+# TWILIO_TO=+15551234567                  # comma-separated
+
+# iMessage (macOS only)
+# IMESSAGE_TO=+15551234567                # comma-separated
+
+# WeCom / 企业微信 group bot
+# WECOM_WEBHOOK_URL=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=YOUR_KEY
+
+# Feishu / 飞书 / Lark bot
+# FEISHU_WEBHOOK_URL=https://open.feishu.cn/open-apis/bot/v2/hook/YOUR_TOKEN
+
+# DingTalk / 钉钉 group robot
+# DINGTALK_WEBHOOK_URL=https://oapi.dingtalk.com/robot/send?access_token=YOUR_TOKEN
+
+# Bark (iOS push, https://github.com/Finb/Bark)
+# BARK_URL=https://api.day.app/YOUR_DEVICE_KEY
+
+# ntfy (https://ntfy.sh or self-hosted)
+# NTFY_URL=https://ntfy.sh/your-topic
+# NTFY_TOKEN=                            # optional Bearer token for protected topics
+
+# Gotify (self-hosted, https://gotify.net)
+# GOTIFY_URL=http://gotify.example.com
+# GOTIFY_TOKEN=your-app-token
+
+# Pushover (https://pushover.net)
+# PUSHOVER_TOKEN=your-app-token
+# PUSHOVER_USER=your-user-key
+
+# Mattermost (self-hosted Slack alternative)
+# MATTERMOST_WEBHOOK_URL=https://your-mattermost.example.com/hooks/YOUR_TOKEN
+
+# Microsoft Teams (incoming webhook)
+# TEAMS_WEBHOOK_URL=https://your-org.webhook.office.com/webhookb2/YOUR_WEBHOOK
+
+# Google Chat (Google Workspace)
+# GOOGLE_CHAT_WEBHOOK_URL=https://chat.googleapis.com/v1/spaces/SPACE/messages?key=KEY
+
+# Zulip (https://zulip.com or self-hosted)
+# ZULIP_SITE=https://yourorg.zulipchat.com
+# ZULIP_EMAIL=bot@yourorg.zulipchat.com
+# ZULIP_API_KEY=your-api-key
+# ZULIP_STREAM=general
+# ZULIP_TOPIC=GPU Monitor
+
+# OpenClaw (https://openclaw.ai — routes to WhatsApp, Teams, Signal, LINE, Matrix, etc.)
+# OPENCLAW_WEBHOOK_URL=http://your-openclaw-host:18789/hooks/wake
+# OPENCLAW_WEBHOOK_SECRET=your-bearer-token   # optional
+
+# ── GitHub Pages Dashboard (optional) ────────────────────────────────────────
+# Push GPU stats to a GitHub repo so the static dashboard can read them.
+# GITHUB_PAGES_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx   # fine-grained token, Contents read+write
+# GITHUB_PAGES_REPO=your-username/your-repo
+
+# ── Proxy (if needed) ────────────────────────────────────────────────────────
+# http_proxy=http://your-proxy-host:port
+# https_proxy=http://your-proxy-host:port
