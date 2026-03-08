@@ -83,7 +83,8 @@ export TELEGRAM_CHAT_ID="your-chat-id"
 python gpu_monitor.py
 
 # Multiple channels at once — just set multiple env vars
-python gpu_monitor.py --once   # check status once and exit
+python gpu_monitor.py --once          # check status once and exit
+python gpu_monitor.py --test-notify   # send a test alert to verify all channels work
 ```
 
 Or use the start script:

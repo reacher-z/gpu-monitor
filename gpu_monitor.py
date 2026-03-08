@@ -1245,7 +1245,8 @@ def run_with_watchdog(target):
 def main():
     global WEB_PORT
     parser = argparse.ArgumentParser(description="Lightweight GPU Monitor")
-    parser.add_argument("--once", action="store_true", help="Print status and exit")
+    parser.add_argument("--once",        action="store_true", help="Print status and exit")
+    parser.add_argument("--test-notify", action="store_true", help="Send a test notification to all configured channels and exit")
     parser.add_argument("--web",  type=int, metavar="PORT", default=0,
                         help="Start web dashboard on PORT (overrides WEB_PORT env var)")
     args = parser.parse_args()
@@ -1254,6 +1255,34 @@ def main():
         gpus  = get_gpu_stats()
         procs = get_gpu_processes()
         print(_to_plain(format_status(gpus, procs)))
+        sys.exit(0)
+
+    if args.test_notify:
+        msg = f"[gpu-monitor] Test notification from {HOSTNAME} — your alerts are working!"
+        notify(msg)
+        time.sleep(2)  # allow background thread to flush
+        channels = [
+            ("Slack",    bool(SLACK_WEBHOOK_URL)),
+            ("Discord",  bool(DISCORD_WEBHOOK_URL)),
+            ("Telegram", bool(TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)),
+            ("Email",    bool(EMAIL_SMTP_HOST and EMAIL_USER and EMAIL_PASS and EMAIL_TO)),
+            ("SMS",      bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM and TWILIO_TO)),
+            ("iMessage", bool(IMESSAGE_TO)),
+            ("WeCom",    bool(WECOM_WEBHOOK_URL)),
+            ("Feishu",   bool(FEISHU_WEBHOOK_URL)),
+            ("DingTalk", bool(DINGTALK_WEBHOOK_URL)),
+            ("Bark",     bool(BARK_URL)),
+            ("Teams",    bool(TEAMS_WEBHOOK_URL)),
+            ("Pushover", bool(PUSHOVER_TOKEN and PUSHOVER_USER)),
+            ("Gotify",   bool(GOTIFY_URL and GOTIFY_TOKEN)),
+            ("ntfy",     bool(NTFY_URL)),
+            ("OpenClaw", bool(OPENCLAW_WEBHOOK_URL)),
+        ]
+        active   = [n for n, ok in channels if ok]
+        inactive = [n for n, ok in channels if not ok]
+        print(f"Test notification sent to: {', '.join(active) or 'none'}")
+        if inactive:
+            print(f"Not configured:           {', '.join(inactive)}")
         sys.exit(0)
 
     if args.web:
