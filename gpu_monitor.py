@@ -15,7 +15,7 @@ Web dashboard:
   Then open http://localhost:8080 in your browser.
 """
 
-__version__ = "0.3.0"
+__version__ = "1.0.0"
 
 import argparse
 import base64

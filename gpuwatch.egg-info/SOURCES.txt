@@ -1,0 +1,9 @@
+LICENSE
+README.md
+gpu_monitor.py
+pyproject.toml
+gpuwatch.egg-info/PKG-INFO
+gpuwatch.egg-info/SOURCES.txt
+gpuwatch.egg-info/dependency_links.txt
+gpuwatch.egg-info/entry_points.txt
+gpuwatch.egg-info/top_level.txt

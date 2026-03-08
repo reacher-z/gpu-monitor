@@ -1,0 +1,2 @@
+[console_scripts]
+gpu-monitor = gpu_monitor:main

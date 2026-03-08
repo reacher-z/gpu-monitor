@@ -1,27 +1,46 @@
-# gpu-monitor — GPU crash and OOM alerting, zero dependencies
+Metadata-Version: 2.1
+Name: gpuwatch
+Version: 0.3.0
+Summary: Lightweight NVIDIA GPU monitor — 20 notification channels (Slack, Discord, Telegram, ntfy, Teams, PagerDuty, Zulip, OpenClaw, and more), Prometheus/InfluxDB/Datadog metrics, crash/ECC detection, Kubernetes, GitHub Pages dashboard
+License: MIT
+Project-URL: Homepage, https://github.com/reacher-z/gpu-monitor
+Project-URL: Repository, https://github.com/reacher-z/gpu-monitor
+Project-URL: Bug Tracker, https://github.com/reacher-z/gpu-monitor/issues
+Keywords: gpu,nvidia,monitoring,slack,discord,telegram,prometheus,pytorch,deep-learning,openclaw
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: System :: Monitoring
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
 
-[![Version 1.0.0](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/reacher-z/gpu-monitor/releases)
+# GPU Monitor
+
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![PyPI](https://img.shields.io/pypi/v/gpuwatch.svg)](https://pypi.org/project/gpuwatch/)
+[![PyPI](https://img.shields.io/pypi/v/gpu-watchdog.svg)](https://pypi.org/project/gpu-watchdog/)
 [![20 channels](https://img.shields.io/badge/notification%20channels-20%20built--in-blueviolet.svg)](#supported-notification-channels)
-[![GitHub Stars](https://img.shields.io/github/stars/reacher-z/gpu-monitor?style=social)](https://github.com/reacher-z/gpu-monitor)
 
-**Your training crashed at 3AM. Six hours of wasted compute. You find out in the morning.**
-
-gpu-monitor catches it the moment it happens and alerts you — before hours of compute are wasted.
-
-**One Python file. Zero dependencies. [20 notification channels](#supported-notification-channels).**
+**Stop losing GPU-hours to silent crashes.** gpu-monitor runs in the background and instantly alerts you on Slack, Discord, Telegram, or [19 other channels](#supported-notification-channels) the moment your training job crashes, your GPU goes idle, or your machine overheats — while you sleep, travel, or work on something else.
 
 ```bash
-pip install gpuwatch
-export SLACK_WEBHOOK_URL="..."   # or Discord, Telegram, ntfy — 20 channels
+pip install gpu-watchdog
+export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
 gpu-monitor
 ```
 
-Three lines. You're covered.
+That's it. You're protected.
 
-⭐ **[Star it](https://github.com/reacher-z/gpu-monitor)** if it saves your next run — helps other ML engineers find the tool.
+> If gpu-monitor saved your training run, please **[star it](https://github.com/reacher-z/gpu-monitor)** — it helps other researchers find the tool.
 
 ---
 
@@ -43,14 +62,11 @@ Three lines. You're covered.
 - [Multi-Machine Setup](#multi-machine-setup)
 - [Setting Up Specific Channels](#setting-up-specific-channels)
   - [Telegram](#setting-up-telegram)
-  - [WeCom, Feishu, DingTalk, Bark](#setting-up-wecom-feishu-dingtalk-bark)
+  - [Chinese channels (WeCom, Feishu, DingTalk, Bark)](#setting-up-chinese-notification-channels)
   - [ntfy](#setting-up-ntfy)
   - [Apprise (80+ extra services)](#setting-up-apprise-80-extra-services)
   - [OpenClaw](#setting-up-openclaw)
 - [Who Uses gpu-monitor?](#who-uses-gpu-monitor)
-- [Privacy and Security](#privacy-and-security)
-- [Troubleshooting](#troubleshooting)
-- [Citing gpu-monitor](#citing-gpu-monitor)
 - [Author](#author)
 
 ---
@@ -63,37 +79,29 @@ Real scenarios gpu-monitor handles automatically:
 ```
 gpu-cluster-1 | GPUs went idle — processes exited: 12345, 12346, 12347 | avg 1% | 38°C | mem 2G/320G (1%)
 ```
-You wake up to this Slack message and restart within minutes, instead of discovering 8 lost GPU-hours in the morning.
+You wake up to this Slack message and can restart immediately, instead of discovering 8 lost hours in the morning.
 
 **A GPU overheats during a long run:**
 ```
 gpu-cluster-1 | GPU 2 temperature CRITICAL: 94°C (limit 92°C) | util 88% | fan 98%
 ```
-You get paged before hardware damage or thermal throttling silently ruins your results.
+You get paged before hardware damage or throttling ruins your results.
 
 **Memory is quietly leaking across epochs:**
 ```
 gpu-cluster-1 | GPU 0 memory leak detected: 18G → 31G (+72%) over 10min | process python3[alice]
 ```
-Caught before you OOM-crash at epoch 47 and lose 6 hours of checkpoints.
+Caught before you OOM-crash at epoch 47.
 
 **One GPU goes idle while others are busy (hung worker):**
 ```
 gpu-cluster-1 | GPU 3 idle (2%) while others active (87-91%) — possible hung worker
 ```
-Without this alert, a single stuck DataLoader worker can silently halve your throughput for hours.
 
 **ECC errors silently corrupting your gradients:**
 ```
 gpu-cluster-1 | GPU 1 uncorrected ECC errors: +3 since last check | retire this GPU before it corrupts results
 ```
-Silent ECC errors can produce subtly wrong model weights — you catch hardware failure before it invalidates an entire experiment.
-
-**GPU memory approaching 100% — OOM crash imminent:**
-```
-gpu-cluster-1 | GPU 2 memory CRITICAL: 78G/80G (98%) — OOM crash imminent | util 94% | 81°C
-```
-You get the alert in time to reduce batch size or kill secondary jobs — instead of discovering a failed run 6 hours later.
 
 ---
 
@@ -101,13 +109,11 @@ You get the alert in time to reduce batch size or kill secondary jobs — instea
 
 **Step 1 — Install:**
 
-> **Note:** The PyPI package is named `gpuwatch` (`gpu-monitor` was taken). The installed command is still `gpu-monitor`.
-
 ```bash
-# Recommended
-pip install gpuwatch
+# Option A: pip (recommended)
+pip install gpu-watchdog
 
-# Alternative: single-file download (no pip required)
+# Option B: single file, zero install
 curl -O https://raw.githubusercontent.com/reacher-z/gpu-monitor/main/gpu_monitor.py
 ```
 
@@ -243,9 +249,6 @@ gpu-monitor fills a gap that existing tools don't: **unattended background monit
 | Live terminal view | ✅ `--watch` | ✅ | ✅ | ❌ |
 | Kubernetes DaemonSet | ✅ | ❌ | ❌ | ❌ |
 | Multi-machine dashboard | ✅ **GitHub Pages (free)** | ❌ | ❌ | ✅ paid |
-| OOM memory warning | ✅ | ❌ | ❌ | ❌ |
-| Fan failure detection | ✅ | ❌ | ❌ | ❌ |
-| GPU PCIe bus drop | ✅ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -260,9 +263,6 @@ gpu-monitor fills a gap that existing tools don't: **unattended background monit
 - **Power throttle alert** — fires when power draw hits 95% of TDP limit
 - **ECC error detection** — alert on uncorrected volatile ECC errors (A100/H100/V100); prevents silent training corruption
 - **Memory leak detection** — alert when GPU memory grows unexpectedly without process changes
-- **OOM warning** — `GPU_MEM_WARN` (default 90%) and `GPU_MEM_CRIT` (default 98%) alert before the process crashes with out-of-memory
-- **Fan failure detection** — alert when fan speed reports 0% while GPU temperature is above threshold (hardware fault)
-- **GPU hardware drop** — alert when GPU count drops between polls; catches PCIe bus failures and hardware faults
 
 **Visibility — always know what your GPUs are doing**
 - **Periodic status** — active: every 10 min, idle: every 30 min
@@ -342,9 +342,6 @@ gpu-monitor fills a gap that existing tools don't: **unattended background monit
 | `MEMLEAK_MINUTES` | `10` | Window (minutes) for memory leak detection |
 | `GPU_TEMP_WARN` | `85` | °C threshold for high-temperature warning alert |
 | `GPU_TEMP_CRIT` | `92` | °C threshold for critical temperature alert |
-| `GPU_MEM_WARN` | `90` | GPU memory % to trigger OOM warning alert |
-| `GPU_MEM_CRIT` | `98` | GPU memory % to trigger critical OOM alert (imminent crash) |
-| `GPU_FAN_FAIL_TEMP` | `70` | °C — alert when fan=0% above this temp; 0 = disabled |
 | `ALERT_WEBHOOK_URL` | — | HTTP endpoint to POST JSON on every alert |
 | `INFLUXDB_URL` | — | InfluxDB server URL (e.g. `http://influxdb:8086`) |
 | `INFLUXDB_TOKEN` | — | API token (v2) or `user:password` (v1) |
@@ -356,8 +353,6 @@ gpu-monitor fills a gap that existing tools don't: **unattended background monit
 | `OTEL_SERVICE_NAME` | `gpu-monitor` | Service name for OTLP resource attributes |
 | `OTEL_EXPORTER_OTLP_HEADERS` | — | Extra headers as `key=val,key2=val2` |
 | `APPRISE_URLS` | — | Space/comma-separated [Apprise](https://github.com/caronc/apprise) URLs (`pip install apprise` required) |
-| `GITHUB_PAGES_TOKEN` | — | Fine-grained GitHub token (Contents read+write) for pushing dashboard stats |
-| `GITHUB_PAGES_REPO` | — | Repo to push stats to, e.g. `your-username/gpu-monitor` |
 
 ### Per-channel variables
 
@@ -598,7 +593,7 @@ export GITHUB_PAGES_REPO=your-username/your-repo
 gpu-monitor
 ```
 
-The monitor pushes `docs/data/{hostname}.json` every check interval. The dashboard auto-fetches new data every second — you'll see updates within moments of each push.
+The monitor pushes `docs/data/{hostname}.json` every check interval. The dashboard at `https://your-username.github.io/your-repo/` auto-refreshes every 30 seconds.
 
 Multi-machine: each machine pushes its own file. The dashboard shows all machines side-by-side with online/stale/offline badges.
 
@@ -623,7 +618,7 @@ Deploy to each machine — each gets an auto-assigned color in Slack/Discord and
 2. Copy the token → `TELEGRAM_BOT_TOKEN`
 3. Send a message to your bot, then visit `https://api.telegram.org/bot<TOKEN>/getUpdates` to find your `TELEGRAM_CHAT_ID`
 
-### Setting Up WeCom, Feishu, DingTalk, Bark
+### Setting Up Chinese Notification Channels
 
 **WeCom (企业微信)**
 1. Open WeCom → Group Chat → Add Group Robot
@@ -688,76 +683,22 @@ gpu-monitor
 
 ## Who Uses gpu-monitor?
 
-gpu-monitor is built for anyone running long GPU workloads who can't watch their machines around the clock.
+gpu-monitor is used by ML researchers, PhD students, and infrastructure engineers who run long training jobs and can't watch their machines around the clock.
 
-**Designed for:**
-- ML researchers and PhD students running overnight training jobs on local or cloud GPUs
-- Lab admins managing shared GPU clusters (4–32 GPUs, multi-user, multi-machine)
-- MLOps and infrastructure engineers who need production-grade GPU observability
-- Self-hosters running local LLMs who want crash and OOM alerts without cloud dependencies
+**Common setups:**
+- Single researcher monitoring a local workstation with Telegram alerts
+- Lab with 4–8 GPU nodes, all reporting to a shared Slack channel with per-machine colors
+- Cloud cluster on Kubernetes, with PagerDuty integration for on-call rotation
+- Self-hosted Prometheus + Grafana stack with Alertmanager routing through gpu-monitor's webhook receiver
 
 Have a setup you're proud of? **[Open an issue with the `showcase` label](https://github.com/reacher-z/gpu-monitor/issues/new?labels=showcase)** and share it — setups get featured here.
 
 ---
 
-## Privacy and Security
-
-gpu-monitor is a self-contained tool that runs entirely on your hardware:
-
-- **No data sent externally** — the only outbound traffic is to the notification channels you configure (your Slack workspace, your email server, etc.)
-- **No credentials stored** — everything is passed via environment variables at runtime; nothing is written to disk
-- **No telemetry** — no usage tracking, no phone-home, no analytics
-- **Open source** — MIT licensed; read every line at [github.com/reacher-z/gpu-monitor](https://github.com/reacher-z/gpu-monitor)
-
----
-
-## Troubleshooting
-
-**GPU not detected / `nvidia-smi` not found**
-- Install NVIDIA drivers and verify: `nvidia-smi`
-- On Kubernetes, ensure the node has `nvidia.com/gpu: "true"` label
-
-**Webhook not receiving alerts**
-- Test your webhook directly: `curl -X POST "$SLACK_WEBHOOK_URL" -d '{"text":"test"}'`
-- Run `gpu-monitor --test-notify` to verify all configured channels
-- Check `gpu-monitor --channels` to confirm env vars are detected
-
-**Systemd service not starting**
-- Check logs: `journalctl -u gpu-monitor@$USER -n 50`
-- Verify the `Environment=` lines in your `.service` file have real values (not placeholders)
-
-**Kubernetes pods not scheduling**
-- Check pod status: `kubectl describe pod -n gpu-monitor -l app=gpu-monitor`
-- Verify the `gpu-monitor-secrets` Secret exists: `kubectl get secrets -n gpu-monitor`
-- Ensure GPU nodes have the `nvidia.com/gpu: "true"` label
-
----
-
-## Citing gpu-monitor
-
-If you use gpu-monitor in your research or infrastructure work, please cite it:
-
-```bibtex
-@software{gpu_monitor,
-  author = {Zhang, Yuxuan},
-  title  = {gpu-monitor: Lightweight NVIDIA GPU Monitor with Multi-Channel Alerting},
-  year   = {2026},
-  url    = {https://github.com/reacher-z/gpu-monitor},
-}
-```
-
-A `CITATION.cff` file is included in the repository for Zotero, Mendeley, and GitHub's built-in "Cite this repository" button.
-
----
-
 ## Author
 
-**Yuxuan Zhang** ([reacher-z](https://github.com/reacher-z)) — ML researcher working on agentic AI and LLM systems. Builds open-source tools for ML infrastructure.
+Built and maintained by [reacher-z](https://github.com/reacher-z).
 
-[Homepage](https://reacher-z.github.io/) · [Google Scholar](https://scholar.google.com/citations?user=CTY_8xgAAAAJ) · [Twitter/X](https://twitter.com/ReacherZhang) · [GitHub](https://github.com/reacher-z)
-
-If this tool saved your GPU-hours or helped you catch a crash before it ruined a training run, feedback and contributions are always welcome.
+If this tool saved your GPU-hours or helped you catch a crash before it ruined a training run, consider giving it a **[star on GitHub](https://github.com/reacher-z/gpu-monitor)** — it helps other researchers and engineers discover the project.
 
 Bugs, feature requests, and channel integrations: [open an issue](https://github.com/reacher-z/gpu-monitor/issues) or [submit a PR](https://github.com/reacher-z/gpu-monitor/pulls). Contributions are welcome.
-
-⭐ **[Star gpu-monitor](https://github.com/reacher-z/gpu-monitor)** — every star helps more ML engineers find it.
