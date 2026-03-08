@@ -4,8 +4,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/gpuwatch.svg)](https://pypi.org/project/gpuwatch/)
 [![20 channels](https://img.shields.io/badge/notification%20channels-20%20built--in-blueviolet.svg)](#supported-notification-channels)
+[![GitHub Stars](https://img.shields.io/github/stars/reacher-z/gpu-monitor?style=social)](https://github.com/reacher-z/gpu-monitor)
 
-**Stop losing GPU-hours to silent crashes.** gpu-monitor runs in the background and instantly alerts you on Slack, Discord, Telegram, or [19 other channels](#supported-notification-channels) the moment your training job crashes, your GPU goes idle, or your machine overheats — while you sleep, travel, or work on something else.
+**Your GPU is idle. Your training crashed 4 hours ago. You find out in the morning.**
+
+gpu-monitor sends you a Slack message the moment it happens — crash, overheat, memory leak, hung worker, ECC error. It runs silently in the background on your Linux server, requires zero dependencies, and alerts you on [20 built-in channels](#supported-notification-channels) while you sleep, travel, or work on something else.
 
 ```bash
 pip install gpuwatch
@@ -15,7 +18,7 @@ gpu-monitor
 
 That's it. You're protected.
 
-> If gpu-monitor saved your training run, please **[star it](https://github.com/reacher-z/gpu-monitor)** — it helps other researchers find the tool.
+**[Star this repo](https://github.com/reacher-z/gpu-monitor)** if it saves your next training run — stars help other ML researchers find the tool.
 
 ---
 
@@ -42,6 +45,7 @@ That's it. You're protected.
   - [Apprise (80+ extra services)](#setting-up-apprise-80-extra-services)
   - [OpenClaw](#setting-up-openclaw)
 - [Who Uses gpu-monitor?](#who-uses-gpu-monitor)
+- [Citing gpu-monitor](#citing-gpu-monitor)
 - [Author](#author)
 
 ---
@@ -54,29 +58,31 @@ Real scenarios gpu-monitor handles automatically:
 ```
 gpu-cluster-1 | GPUs went idle — processes exited: 12345, 12346, 12347 | avg 1% | 38°C | mem 2G/320G (1%)
 ```
-You wake up to this Slack message and can restart immediately, instead of discovering 8 lost hours in the morning.
+You wake up to this Slack message and restart within minutes, instead of discovering 8 lost GPU-hours in the morning.
 
 **A GPU overheats during a long run:**
 ```
 gpu-cluster-1 | GPU 2 temperature CRITICAL: 94°C (limit 92°C) | util 88% | fan 98%
 ```
-You get paged before hardware damage or throttling ruins your results.
+You get paged before hardware damage or thermal throttling silently ruins your results.
 
 **Memory is quietly leaking across epochs:**
 ```
 gpu-cluster-1 | GPU 0 memory leak detected: 18G → 31G (+72%) over 10min | process python3[alice]
 ```
-Caught before you OOM-crash at epoch 47.
+Caught before you OOM-crash at epoch 47 and lose 6 hours of checkpoints.
 
 **One GPU goes idle while others are busy (hung worker):**
 ```
 gpu-cluster-1 | GPU 3 idle (2%) while others active (87-91%) — possible hung worker
 ```
+Without this alert, a single stuck DataLoader worker can silently halve your throughput for hours.
 
 **ECC errors silently corrupting your gradients:**
 ```
 gpu-cluster-1 | GPU 1 uncorrected ECC errors: +3 since last check | retire this GPU before it corrupts results
 ```
+Silent ECC errors can produce subtly wrong model weights — you catch hardware failure before it invalidates an entire experiment.
 
 ---
 
@@ -670,10 +676,27 @@ Have a setup you're proud of? **[Open an issue with the `showcase` label](https:
 
 ---
 
+## Citing gpu-monitor
+
+If you use gpu-monitor in your research or infrastructure work, please cite it:
+
+```bibtex
+@software{gpu_monitor,
+  author = {reacher-z},
+  title  = {gpu-monitor: Lightweight NVIDIA GPU Monitor with Multi-Channel Alerting},
+  year   = {2026},
+  url    = {https://github.com/reacher-z/gpu-monitor},
+}
+```
+
+A `CITATION.cff` file is included in the repository for Zotero, Mendeley, and GitHub's built-in "Cite this repository" button.
+
+---
+
 ## Author
 
-Built and maintained by [reacher-z](https://github.com/reacher-z).
+Built and maintained by [reacher-z](https://github.com/reacher-z) — ML infrastructure and GPU monitoring tools.
 
-If this tool saved your GPU-hours or helped you catch a crash before it ruined a training run, consider giving it a **[star on GitHub](https://github.com/reacher-z/gpu-monitor)** — it helps other researchers and engineers discover the project.
+If this tool saved your GPU-hours or helped you catch a crash before it ruined a training run, please give it a **[star on GitHub](https://github.com/reacher-z/gpu-monitor)** — it helps other researchers and engineers discover the project.
 
 Bugs, feature requests, and channel integrations: [open an issue](https://github.com/reacher-z/gpu-monitor/issues) or [submit a PR](https://github.com/reacher-z/gpu-monitor/pulls). Contributions are welcome.
