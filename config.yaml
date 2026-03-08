@@ -8,6 +8,8 @@
 #
 # Or put vars in a .env file and load it:
 #   set -a; source .env; set +a; python gpu_monitor.py
+#
+# Copy .env.example to .env and fill in your values for a quick start.
 
 # ── General ──────────────────────────────────────────────────────────────────
 # CHECK_INTERVAL=60        # Seconds between GPU polls
@@ -20,7 +22,14 @@
 # LOG_FILE=                # Path to log file (enables 5 MB rotation); empty = stdout only
 # WEB_PORT=0               # Local web dashboard port; 0 = disabled
 
+# ── Alerting thresholds ───────────────────────────────────────────────────────
+# GPU_TEMP_WARN=85         # °C — warning alert when any GPU exceeds this temperature
+# GPU_TEMP_CRIT=92         # °C — critical alert when any GPU exceeds this temperature
+# MEMLEAK_THRESHOLD=30     # GPU memory growth % over MEMLEAK_MINUTES to trigger leak alert
+# MEMLEAK_MINUTES=10       # Window (minutes) for memory leak detection
+
 # ── Notification Channels (configure one or more) ────────────────────────────
+# Only channels with credentials set will be used.
 
 # Slack
 # SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
@@ -72,6 +81,9 @@
 # PUSHOVER_TOKEN=your-app-token
 # PUSHOVER_USER=your-user-key
 
+# Rocket.Chat (self-hosted)
+# ROCKETCHAT_WEBHOOK_URL=https://your-rocketchat.example.com/hooks/YOUR_TOKEN
+
 # Mattermost (self-hosted Slack alternative)
 # MATTERMOST_WEBHOOK_URL=https://your-mattermost.example.com/hooks/YOUR_TOKEN
 
@@ -91,6 +103,32 @@
 # OpenClaw (https://openclaw.ai — routes to WhatsApp, Teams, Signal, LINE, Matrix, etc.)
 # OPENCLAW_WEBHOOK_URL=http://your-openclaw-host:18789/hooks/wake
 # OPENCLAW_WEBHOOK_SECRET=your-bearer-token   # optional
+
+# PagerDuty (https://pagerduty.com — on-call alerting)
+# PAGERDUTY_INTEGRATION_KEY=your-32-char-integration-key   # Events API v2
+
+# Apprise (https://github.com/caronc/apprise — 80+ services via pip install apprise)
+# APPRISE_URLS=slack://token/channel tgram://bot_token/chat_id   # space or comma-separated
+
+# Generic alert webhook — POST {host, text, color, timestamp} JSON on every alert
+# ALERT_WEBHOOK_URL=http://your-server/alert-hook
+
+# ── Metrics Backends (optional) ───────────────────────────────────────────────
+
+# InfluxDB (line protocol — supports v1 and v2)
+# INFLUXDB_URL=http://influxdb:8086
+# INFLUXDB_TOKEN=your-api-token          # v2 API token or v1 "user:password"
+# INFLUXDB_BUCKET=gpu_metrics            # v2 bucket or v1 "db/rp"
+# INFLUXDB_ORG=your-org                  # v2 org name (omit for v1)
+
+# Datadog (DogStatsD / UDP)
+# DATADOG_STATSD_HOST=localhost          # Datadog agent host
+# DATADOG_STATSD_PORT=8125              # DogStatsD UDP port
+
+# OpenTelemetry OTLP HTTP (any OTel-compatible backend)
+# OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+# OTEL_SERVICE_NAME=gpu-monitor
+# OTEL_EXPORTER_OTLP_HEADERS=x-api-key=your-key   # comma-separated key=val pairs
 
 # ── GitHub Pages Dashboard (optional) ────────────────────────────────────────
 # Push GPU stats to a GitHub repo so the static dashboard can read them.
