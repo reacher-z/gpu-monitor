@@ -187,16 +187,17 @@ def get_gpu_stats() -> list[dict]:
             gpus.append({
                 "idx": idx, "name": p[1], "util": util,
                 "mem_used": mem_used, "mem_total": mem_total, "temp": temp,
-                "power_w":   None,
-                "clock_mhz": None,
-                "fan_speed":  None,
+                "power_w":      None,
+                "clock_mhz":    None,
+                "fan_speed":     None,
+                "power_limit_w": None,
             })
 
-        # Optional query — power, clock, fan; skip silently if driver doesn't support it
+        # Optional query — power, clock, fan, power limit; skip silently if not supported
         try:
             r2 = subprocess.run(
                 ["nvidia-smi",
-                 "--query-gpu=index,power.draw,clocks.sm,fan.speed",
+                 "--query-gpu=index,power.draw,clocks.sm,fan.speed,enforced.power.limit",
                  "--format=csv,noheader,nounits"],
                 capture_output=True, text=True, timeout=10,
             )
@@ -206,13 +207,14 @@ def get_gpu_stats() -> list[dict]:
                     if not line.strip():
                         continue
                     p = [x.strip() for x in line.split(",")]
-                    if len(p) < 4:
+                    if len(p) < 5:
                         continue
                     idx = _safe_int(p[0])
                     if idx is not None and idx in idx_map:
-                        idx_map[idx]["power_w"]   = _safe_float(p[1])
-                        idx_map[idx]["clock_mhz"] = _safe_int(p[2])
-                        idx_map[idx]["fan_speed"]  = _safe_int(p[3])
+                        idx_map[idx]["power_w"]      = _safe_float(p[1])
+                        idx_map[idx]["clock_mhz"]    = _safe_int(p[2])
+                        idx_map[idx]["fan_speed"]     = _safe_int(p[3])
+                        idx_map[idx]["power_limit_w"] = _safe_float(p[4])
         except Exception as e:
             logger.debug(f"Optional power/clock/fan query failed (skipping): {e}")
 
@@ -1051,11 +1053,15 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
                 "# HELP gpu_temperature_celsius GPU temperature",
                 "# TYPE gpu_temperature_celsius gauge",
             ] + [f'gpu_temperature_celsius{{gpu="{g["idx"]}",host="{h}"}} {g["temp"]}' for g in gpus]
-            # Optional: power and clocks
+            # Optional: power, power limit, and clocks
             pw = [g for g in gpus if g.get("power_w") is not None]
             if pw:
                 lines += ["# HELP gpu_power_watts GPU power draw watts", "# TYPE gpu_power_watts gauge"]
                 lines += [f'gpu_power_watts{{gpu="{g["idx"]}",host="{h}"}} {g["power_w"]}' for g in pw]
+            pl = [g for g in gpus if g.get("power_limit_w") is not None]
+            if pl:
+                lines += ["# HELP gpu_power_limit_watts GPU enforced power limit watts", "# TYPE gpu_power_limit_watts gauge"]
+                lines += [f'gpu_power_limit_watts{{gpu="{g["idx"]}",host="{h}"}} {g["power_limit_w"]}' for g in pl]
             cl = [g for g in gpus if g.get("clock_mhz") is not None]
             if cl:
                 lines += ["# HELP gpu_clock_sm_mhz GPU SM clock MHz", "# TYPE gpu_clock_sm_mhz gauge"]
@@ -1078,6 +1084,45 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+
+        elif self.path == "/webhook" and self.command == "POST":
+            # Prometheus Alertmanager webhook receiver.
+            # Configure Alertmanager to POST to http://YOUR_HOST:WEB_PORT/webhook
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(length)
+                payload = json.loads(body)
+            except Exception as e:
+                logger.error(f"Alertmanager webhook: bad request: {e}")
+                self.send_response(400)
+                self.end_headers()
+                return
+            for alert in payload.get("alerts", []):
+                status   = alert.get("status", "firing")
+                labels   = alert.get("labels", {})
+                annots   = alert.get("annotations", {})
+                name     = labels.get("alertname", "Alert")
+                severity = labels.get("severity", "")
+                summary  = annots.get("summary", "")
+                desc     = annots.get("description", "")
+                if status == "firing":
+                    icon  = ":fire:" if severity == "critical" else ":warning:"
+                    color = "#e01e5a" if severity == "critical" else "#ecb22e"
+                    msg   = f"{icon} *{name}*"
+                    if summary: msg += f" — {summary}"
+                    if desc:    msg += f"\n{desc}"
+                else:
+                    icon  = ":white_check_mark:"
+                    color = "#22c55e"
+                    msg   = f"{icon} *{name} resolved*"
+                    if summary: msg += f" — {summary}"
+                logger.info(f"Alertmanager webhook: {status} {name} ({severity})")
+                notify(msg, color=color)
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", "2")
+            self.end_headers()
+            self.wfile.write(b"ok")
 
         else:
             self.send_response(404)
@@ -1229,6 +1274,8 @@ def monitor():
     _memleak_alerted: set[int] = set()
     # Temperature alerting: {gpu_idx: 'warn' | 'crit'}
     _temp_alerted: dict[int, str] = {}
+    # Power throttle tracking: set of GPU indices currently near power limit
+    _power_alerted: set[int] = set()
 
     channels = [c for c, v in [
         ("Slack",        SLACK_WEBHOOK_URL),
@@ -1424,6 +1471,25 @@ def monitor():
                     _temp_alerted[idx] = "warn"
                 elif temp < GPU_TEMP_WARN - 5:  # hysteresis: clear when 5°C below warn
                     _temp_alerted.pop(idx, None)
+
+        # --- Power throttle alert (when draw >= 95% of enforced power limit) ---
+        for g in gpus:
+            idx = g["idx"]
+            pw = g.get("power_w")
+            pl = g.get("power_limit_w")
+            if pw is None or pl is None or pl <= 0:
+                continue
+            pct = pw / pl * 100
+            if pct >= 95 and idx not in _power_alerted:
+                logger.warning(f"GPU{idx}: near power limit {pw:.0f}/{pl:.0f}W ({pct:.0f}%)")
+                notify(
+                    f":electric_plug: *GPU{idx} near power limit* — {pw:.0f}/{pl:.0f}W "
+                    f"({pct:.0f}%). Performance may be throttled.",
+                    color="#ecb22e",
+                )
+                _power_alerted.add(idx)
+            elif pct < 90:
+                _power_alerted.discard(idx)
 
         time.sleep(CHECK_INTERVAL)
 

@@ -22,7 +22,9 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 - **19 notification channels** — Slack, Discord, Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTalk, Bark, Rocket.Chat, ntfy, Gotify, Pushover, Mattermost, Teams, Google Chat, Zulip, OpenClaw (+ **80+ more via [Apprise](https://github.com/caronc/apprise)**)
 - **Memory leak detection** — alert when GPU memory grows unexpectedly without process changes
 - **Temperature alerting** — `GPU_TEMP_WARN` / `GPU_TEMP_CRIT` thresholds, no Prometheus required
+- **Power throttle alert** — notify when GPU power draw hits 95% of its TDP limit
 - **Fan speed** — `gpu_fan_speed_percent` Prometheus metric for thermal correlation
+- **Alertmanager receiver** — route all Prometheus alerts to 19+ channels via `POST /webhook`
 - **`--test-notify`** — verify all configured channels with one command
 - **`--json`** — output current GPU stats as JSON for shell scripting (`--json | jq '.gpus[].util'`)
 - **Watchdog** — auto-restart on crash
@@ -311,7 +313,7 @@ python gpu_monitor.py
 # Metrics at http://localhost:8080/metrics
 ```
 
-Exposed metrics: `gpu_utilization_percent`, `gpu_memory_used_mib`, `gpu_memory_total_mib`, `gpu_memory_utilization_percent`, `gpu_temperature_celsius`, `gpu_power_watts`, `gpu_clock_sm_mhz`, `gpu_fan_speed_percent`, `gpu_process_count`. All labeled with `gpu` index and `host`.
+Exposed metrics: `gpu_utilization_percent`, `gpu_memory_used_mib`, `gpu_memory_total_mib`, `gpu_memory_utilization_percent`, `gpu_temperature_celsius`, `gpu_power_watts`, `gpu_power_limit_watts`, `gpu_clock_sm_mhz`, `gpu_fan_speed_percent`, `gpu_process_count`. All labeled with `gpu` index and `host`.
 
 Add to your `prometheus.yml`:
 ```yaml
@@ -340,6 +342,21 @@ Included rules:
 | `GPUMemoryHigh` | mem util > 90% for 5m | warning |
 | `GPUMemoryFull` | mem util > 98% for 2m | critical |
 | `GPUMonitorDown` | no metrics for 3m | critical |
+
+### Alertmanager webhook receiver
+
+When `WEB_PORT` is set, gpu-monitor also acts as an Alertmanager webhook receiver — forwarding **any** Prometheus alert (GPU or otherwise) to all 19 configured notification channels.
+
+Configure in Alertmanager:
+```yaml
+receivers:
+  - name: gpu-monitor
+    webhook_configs:
+      - url: http://your-server:8080/webhook
+        send_resolved: true
+```
+
+Alerts arrive with severity-appropriate formatting (`:fire:` for critical, `:warning:` for warning) and resolved alerts are announced with `:white_check_mark:`.
 
 ## GitHub Pages Dashboard
 
