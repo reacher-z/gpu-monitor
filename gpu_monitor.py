@@ -5,7 +5,7 @@ Lightweight GPU Monitor with multi-channel notifications and web dashboard.
 Supported notification channels (configure via environment variables):
   Slack, Discord, Telegram, Email (SMTP), SMS (Twilio), iMessage (macOS only),
   WeCom (企业微信), Feishu (飞书), DingTalk (钉钉), Bark (iOS push),
-  ntfy (self-hosted or ntfy.sh), Gotify (self-hosted),
+  ntfy (self-hosted or ntfy.sh), Gotify (self-hosted), Pushover,
   OpenClaw (routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, etc.)
 
 Web dashboard:
@@ -97,6 +97,8 @@ NTFY_URL   = os.environ.get("NTFY_URL",   "")  # e.g. https://ntfy.sh/your-topic
 NTFY_TOKEN = os.environ.get("NTFY_TOKEN", "")  # optional auth token
 GOTIFY_URL   = os.environ.get("GOTIFY_URL",   "")  # e.g. http://gotify.example.com
 GOTIFY_TOKEN = os.environ.get("GOTIFY_TOKEN", "")  # app token from Gotify
+PUSHOVER_TOKEN   = os.environ.get("PUSHOVER_TOKEN",   "")  # app token from pushover.net
+PUSHOVER_USER    = os.environ.get("PUSHOVER_USER",    "")  # user/group key
 
 # GitHub Pages dashboard (optional)
 GITHUB_PAGES_TOKEN = os.environ.get("GITHUB_PAGES_TOKEN", "")
@@ -473,6 +475,32 @@ def send_bark(plain_text: str) -> bool:
         return False
 
 
+def send_pushover(plain_text: str) -> bool:
+    """Send via Pushover (https://pushover.net) — iOS/Android push notifications."""
+    if not PUSHOVER_TOKEN or not PUSHOVER_USER:
+        return False
+    lines = plain_text.strip().splitlines()
+    title = lines[0][:250] if lines else "GPU Monitor"
+    data = urllib.parse.urlencode({
+        "token":   PUSHOVER_TOKEN,
+        "user":    PUSHOVER_USER,
+        "title":   title,
+        "message": plain_text[:1024],
+    }).encode()
+    try:
+        req = urllib.request.Request(
+            "https://api.pushover.net/1/messages.json",
+            data=data,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.status == 200
+    except Exception as e:
+        logger.error(f"Pushover error: {e}")
+        return False
+
+
 def send_gotify(plain_text: str) -> bool:
     """Send via Gotify (self-hosted push notification server).
 
@@ -572,6 +600,7 @@ def notify(slack_text: str, color: str = "") -> None:
             send_feishu(plain)
             send_dingtalk(plain)
             send_bark(plain)
+            send_pushover(plain)
             send_gotify(plain)
             send_ntfy(plain)
             send_openclaw(plain)

@@ -38,6 +38,7 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 | **Bark** | Bark server URL (self-hosted or api.day.app) |
 | **ntfy** | ntfy.sh topic URL (or self-hosted), optional auth token |
 | **Gotify** | Gotify server URL + app token (self-hosted) |
+| **Pushover** | App token + user key from pushover.net |
 | **OpenClaw** | Webhook URL + secret — routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, and [20+ more](https://openclaw.ai) |
 
 Configure one or more — only channels with credentials set will be used.
@@ -175,6 +176,13 @@ bash start.sh status    # check if running
 |----------|-------------|
 | `GOTIFY_URL` | Gotify server URL, e.g. `http://gotify.example.com` |
 | `GOTIFY_TOKEN` | App token from Gotify dashboard |
+
+### Pushover
+
+| Variable | Description |
+|----------|-------------|
+| `PUSHOVER_TOKEN` | App API token from [pushover.net](https://pushover.net) |
+| `PUSHOVER_USER` | Your user/group key |
 
 ### OpenClaw
 
