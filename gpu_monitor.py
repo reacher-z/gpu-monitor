@@ -10,12 +10,15 @@ Web dashboard:
   Then open http://localhost:8080 in your browser.
 """
 
+import argparse
+import base64
 import hashlib
 import http.server
 import json
 import logging
 import logging.handlers
 import os
+import pwd
 import re
 import signal
 import smtplib
@@ -90,13 +93,41 @@ GITHUB_PAGES_REPO  = os.environ.get("GITHUB_PAGES_REPO",  "")  # e.g. owner/repo
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+def _safe_int(s: str) -> int | None:
+    """Parse int from nvidia-smi output that may contain '[N/A]'."""
+    try:
+        return int(float(s.strip()))
+    except (ValueError, AttributeError):
+        return None
+
+
+def _safe_float(s: str) -> float | None:
+    try:
+        return round(float(s.strip()), 1)
+    except (ValueError, AttributeError):
+        return None
+
+
+def _pid_username(pid: str) -> str:
+    """Resolve process owner username from /proc (Linux only)."""
+    try:
+        uid = os.stat(f"/proc/{pid}").st_uid
+        return pwd.getpwuid(uid).pw_name
+    except Exception:
+        return ""
+
+
+# ---------------------------------------------------------------------------
 # GPU queries
 # ---------------------------------------------------------------------------
 def get_gpu_stats() -> list[dict]:
     try:
         r = subprocess.run(
             ["nvidia-smi",
-             "--query-gpu=index,name,utilization.gpu,memory.used,memory.total,temperature.gpu",
+             "--query-gpu=index,name,utilization.gpu,memory.used,memory.total,"
+             "temperature.gpu,power.draw,clocks.sm",
              "--format=csv,noheader,nounits"],
             capture_output=True, text=True, timeout=10,
         )
@@ -104,14 +135,28 @@ def get_gpu_stats() -> list[dict]:
             return []
         gpus = []
         for line in r.stdout.strip().split("\n"):
+            if not line.strip():
+                continue
             p = [x.strip() for x in line.split(",")]
-            if len(p) >= 6:
-                gpus.append({
-                    "idx": int(p[0]), "name": p[1], "util": int(p[2]),
-                    "mem_used": int(p[3]), "mem_total": int(p[4]), "temp": int(p[5]),
-                })
+            if len(p) < 6:
+                continue
+            idx  = _safe_int(p[0])
+            util = _safe_int(p[2])
+            mem_used  = _safe_int(p[3])
+            mem_total = _safe_int(p[4])
+            temp = _safe_int(p[5])
+            if None in (idx, util, mem_used, mem_total, temp):
+                logger.debug(f"Skipping malformed nvidia-smi line: {line!r}")
+                continue
+            gpus.append({
+                "idx": idx, "name": p[1], "util": util,
+                "mem_used": mem_used, "mem_total": mem_total, "temp": temp,
+                "power_w":   _safe_float(p[6]) if len(p) > 6 else None,
+                "clock_mhz": _safe_int(p[7])   if len(p) > 7 else None,
+            })
         return gpus
-    except Exception:
+    except Exception as e:
+        logger.debug(f"get_gpu_stats failed: {e}")
         return []
 
 
@@ -128,7 +173,7 @@ def get_gpu_processes() -> dict[int, list[dict]]:
         )
         if r.returncode != 0 or r2.returncode != 0:
             return {}
-        uuid_map = {}
+        uuid_map: dict[str, int] = {}
         for line in r2.stdout.strip().split("\n"):
             parts = [x.strip() for x in line.split(",")]
             if len(parts) >= 2:
@@ -141,11 +186,15 @@ def get_gpu_processes() -> dict[int, list[dict]]:
             if len(p) >= 4:
                 idx = uuid_map.get(p[0], -1)
                 if idx >= 0:
-                    procs.setdefault(idx, []).append(
-                        {"pid": p[1], "name": p[2].split("/")[-1], "mem": p[3]}
-                    )
+                    procs.setdefault(idx, []).append({
+                        "pid":  p[1],
+                        "name": p[2].split("/")[-1],
+                        "mem":  p[3],
+                        "user": _pid_username(p[1]),
+                    })
         return procs
-    except Exception:
+    except Exception as e:
+        logger.debug(f"get_gpu_processes failed: {e}")
         return {}
 
 
@@ -191,21 +240,27 @@ def format_status(gpus: list[dict], procs: dict | None = None) -> str:
     """Slack-formatted GPU status."""
     if not gpus:
         return ":x: Cannot read GPU status"
-    now      = datetime.now().strftime("%m-%d %H:%M")
+    now       = datetime.now().strftime("%m-%d %H:%M")
     total_mem = sum(g["mem_total"] for g in gpus)
     used_mem  = sum(g["mem_used"]  for g in gpus)
     mem_pct   = used_mem / total_mem * 100 if total_mem else 0
     avg_util  = sum(g["util"] for g in gpus) / len(gpus)
     avg_temp  = sum(g["temp"] for g in gpus) / len(gpus)
     util_parts = " ".join(f"{g['idx']}:{g['util']}%" for g in gpus)
+    # Optional power summary
+    powers = [g["power_w"] for g in gpus if g.get("power_w") is not None]
+    power_str = f" | {sum(powers):.0f}W" if powers else ""
     lines = [
         f"`{HOSTNAME}` | {now} | avg *{avg_util:.0f}%* | "
-        f"{avg_temp:.0f}C | mem {used_mem // 1024}G/{total_mem // 1024}G ({mem_pct:.0f}%)",
+        f"{avg_temp:.0f}C{power_str} | mem {used_mem // 1024}G/{total_mem // 1024}G ({mem_pct:.0f}%)",
         f"`{util_parts}`",
     ]
     if procs:
         proc_parts = [
-            f"GPU{idx}: " + ", ".join(f"{p['name']}({p['mem']}M)" for p in plist)
+            f"GPU{idx}: " + ", ".join(
+                f"{p['name']}({p['mem']}M)" + (f"[{p['user']}]" if p.get("user") else "")
+                for p in plist
+            )
             for idx, plist in sorted(procs.items())
         ]
         lines.append("_" + " | ".join(proc_parts) + "_")
@@ -257,13 +312,14 @@ def send_email(plain_text: str) -> bool:
     subject = lines[0].strip() if lines else "GPU Monitor Alert"
     try:
         msg = MIMEText(plain_text, "plain")
+        recipients = [a.strip() for a in EMAIL_TO.split(",") if a.strip()]
         msg["Subject"] = subject
         msg["From"]    = EMAIL_USER
-        msg["To"]      = EMAIL_TO
+        msg["To"]      = ", ".join(recipients)
         with smtplib.SMTP(EMAIL_SMTP_HOST, EMAIL_SMTP_PORT, timeout=15) as s:
             s.starttls()
             s.login(EMAIL_USER, EMAIL_PASS)
-            s.sendmail(EMAIL_USER, [a.strip() for a in EMAIL_TO.split(",")], msg.as_string())
+            s.sendmail(EMAIL_USER, recipients, msg.as_string())
         return True
     except Exception as e:
         logger.error(f"Email error: {e}")
@@ -276,7 +332,7 @@ def send_sms(plain_text: str) -> bool:
         return False
     url   = f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json"
     creds = b64encode(f"{TWILIO_ACCOUNT_SID}:{TWILIO_AUTH_TOKEN}".encode()).decode()
-    body  = (plain_text[:155] + "…") if len(plain_text) > 160 else plain_text
+    body  = (plain_text[:157] + "...") if len(plain_text) > 160 else plain_text
     ok = True
     for to in TWILIO_TO.split(","):
         to = to.strip()
@@ -337,14 +393,16 @@ def send_imessage(plain_text: str) -> bool:
 
 
 def notify(slack_text: str, color: str = "") -> None:
-    """Dispatch to all configured notification channels."""
-    plain = _to_plain(slack_text)
-    send_slack(slack_text, color)
-    send_discord(plain, color)
-    send_telegram(plain)
-    send_email(plain)
-    send_sms(plain)
-    send_imessage(plain)
+    """Dispatch to all configured notification channels in a background thread."""
+    def _dispatch() -> None:
+        plain = _to_plain(slack_text)
+        send_slack(slack_text, color)
+        send_discord(plain, color)
+        send_telegram(plain)
+        send_email(plain)
+        send_sms(plain)
+        send_imessage(plain)
+    threading.Thread(target=_dispatch, daemon=True).start()
 
 
 # ---------------------------------------------------------------------------
@@ -593,7 +651,6 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
         elif self.path == "/api/stats":
             gpus  = get_gpu_stats()
             procs = get_gpu_processes()
-            # Convert procs keys to strings for JSON
             procs_str = {str(k): v for k, v in procs.items()}
             payload = {
                 "hostname": HOSTNAME,
@@ -607,6 +664,38 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(body)
+
+        elif self.path == "/metrics":
+            # Prometheus text format — compatible with Grafana, prometheus scrape
+            gpus = get_gpu_stats()
+            lines = [
+                "# HELP gpu_utilization_percent GPU utilization %",
+                "# TYPE gpu_utilization_percent gauge",
+            ] + [f'gpu_utilization_percent{{gpu="{g["idx"]}",name="{g["name"]}",host="{HOSTNAME}"}} {g["util"]}' for g in gpus] + [
+                "# HELP gpu_memory_used_mib GPU memory used MiB",
+                "# TYPE gpu_memory_used_mib gauge",
+            ] + [f'gpu_memory_used_mib{{gpu="{g["idx"]}",host="{HOSTNAME}"}} {g["mem_used"]}' for g in gpus] + [
+                "# HELP gpu_memory_total_mib GPU memory total MiB",
+                "# TYPE gpu_memory_total_mib gauge",
+            ] + [f'gpu_memory_total_mib{{gpu="{g["idx"]}",host="{HOSTNAME}"}} {g["mem_total"]}' for g in gpus] + [
+                "# HELP gpu_temperature_celsius GPU temperature",
+                "# TYPE gpu_temperature_celsius gauge",
+            ] + [f'gpu_temperature_celsius{{gpu="{g["idx"]}",host="{HOSTNAME}"}} {g["temp"]}' for g in gpus]
+            # Optional: power and clocks
+            pw = [g for g in gpus if g.get("power_w") is not None]
+            if pw:
+                lines += ["# HELP gpu_power_watts GPU power draw watts", "# TYPE gpu_power_watts gauge"]
+                lines += [f'gpu_power_watts{{gpu="{g["idx"]}",host="{HOSTNAME}"}} {g["power_w"]}' for g in pw]
+            cl = [g for g in gpus if g.get("clock_mhz") is not None]
+            if cl:
+                lines += ["# HELP gpu_clock_sm_mhz GPU SM clock MHz", "# TYPE gpu_clock_sm_mhz gauge"]
+                lines += [f'gpu_clock_sm_mhz{{gpu="{g["idx"]}",host="{HOSTNAME}"}} {g["clock_mhz"]}' for g in cl]
+            body = ("\n".join(lines) + "\n").encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
 
@@ -634,27 +723,48 @@ def _gh_update_file(token: str, repo: str, path: str, content: bytes, message: s
         "Accept": "application/vnd.github+json",
         "Content-Type": "application/json",
     }
-    # Fetch current SHA (needed for updates; 404 means new file)
     sha = None
     try:
         req = urllib.request.Request(api, headers=hdrs)
         with urllib.request.urlopen(req, timeout=10) as resp:
             sha = json.loads(resp.read())["sha"]
     except urllib.error.HTTPError as e:
-        if e.code != 404:
-            raise
+        if e.code == 404:
+            pass  # new file — no SHA needed
+        elif e.code in (401, 403):
+            logger.warning(f"GitHub API auth error {e.code} — check GITHUB_PAGES_TOKEN permissions")
+            return False
+        else:
+            logger.debug(f"GitHub GET error {e.code}: {e}")
+            return False
     payload: dict = {"message": message, "content": b64encode(content).decode()}
     if sha:
         payload["sha"] = sha
-    req = urllib.request.Request(api, data=json.dumps(payload).encode(), headers=hdrs, method="PUT")
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        return resp.status in (200, 201)
+    try:
+        req = urllib.request.Request(api, data=json.dumps(payload).encode(), headers=hdrs, method="PUT")
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return resp.status in (200, 201)
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            logger.warning(f"GitHub API auth error {e.code} on PUT — check token")
+        else:
+            logger.debug(f"GitHub PUT error {e.code}: {e}")
+        return False
+
+
+_last_gh_push: float = 0.0
+_GH_PUSH_INTERVAL = 300  # push at most every 5 minutes
 
 
 def push_stats_to_github(gpus: list[dict], procs: dict) -> None:
-    """Push current GPU stats to GitHub Pages repo (best-effort, never raises)."""
+    """Push current GPU stats to GitHub Pages repo (best-effort, throttled to 5 min)."""
+    global _last_gh_push
     if not GITHUB_PAGES_TOKEN or not GITHUB_PAGES_REPO:
         return
+    now = time.time()
+    if now - _last_gh_push < _GH_PUSH_INTERVAL:
+        return
+    _last_gh_push = now
     try:
         stats = {
             "hostname": HOSTNAME,
@@ -691,9 +801,7 @@ def _update_index(token: str, repo: str) -> None:
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read())
                 sha = data["sha"]
-                machines = json.loads(b64encode(data["content"].encode()).decode()
-                                      if False else
-                                      __import__("base64").b64decode(data["content"]))["machines"]
+                machines = json.loads(base64.b64decode(data["content"]))["machines"]
         except urllib.error.HTTPError as e:
             if e.code != 404:
                 return
@@ -733,6 +841,8 @@ def monitor():
     last_status_time = 0.0
     was_idle         = False
     partial_alerted  = False
+    # Track processes from previous iteration for crash detection
+    prev_proc_names: set[str] = set()
 
     channels = [c for c, v in [
         ("Slack",    SLACK_WEBHOOK_URL),
@@ -762,21 +872,21 @@ def monitor():
             time.sleep(CHECK_INTERVAL)
             continue
 
-        now   = time.time()
-        procs = None  # fetched lazily; at most one call per iteration
+        now          = time.time()
+        _cached_procs: dict | None = None
 
         def get_procs() -> dict:
-            nonlocal procs
-            if procs is None:
-                procs = get_gpu_processes()
-            return procs
+            nonlocal _cached_procs
+            if _cached_procs is None:
+                _cached_procs = get_gpu_processes()
+            return _cached_procs
 
         if startup:
-            notify(f":rocket: *Monitor started* | " + format_status(gpus, get_procs()))
+            notify(":rocket: *Monitor started* | " + format_status(gpus, get_procs()))
             last_status_time = now
             startup = False
 
-        # Push to GitHub Pages dashboard (non-blocking best-effort)
+        # Push to GitHub Pages (throttled to every 5 min)
         push_stats_to_github(gpus, get_procs())
 
         all_idle = all(g["util"] < IDLE_THRESHOLD for g in gpus)
@@ -798,8 +908,20 @@ def monitor():
         if len(idle_gpus) == len(gpus):
             if idle_since is None:
                 idle_since = now
+                # Just went idle — if processes were running, alert immediately (possible crash)
+                if not was_idle and prev_proc_names and _cooldown_ok(last_alert_time, now):
+                    names_str = ", ".join(sorted(prev_proc_names)[:3])
+                    logger.warning(f"GPUs went idle; last processes: {names_str}")
+                    notify(
+                        f":x: *GPUs went idle* — was running: {names_str} | "
+                        + format_status(gpus, get_procs()),
+                        color="#e01e5a",
+                    )
+                    last_alert_time = now
+
             active_since    = None
             partial_alerted = False
+            prev_proc_names = set()
 
             idle_min = (now - idle_since) / 60
             if idle_min >= IDLE_MINUTES:
@@ -814,13 +936,19 @@ def monitor():
             was_idle = True
 
         else:
+            # Update tracked process names for crash detection
+            cur_procs = get_procs()
+            prev_proc_names = {
+                p["name"] for plist in cur_procs.values() for p in plist
+            }
+
             if not idle_gpus:
                 partial_alerted = False
 
             if was_idle:
                 logger.info("GPUs active again")
                 notify(
-                    f":white_check_mark: *GPUs active* | " + format_status(gpus, get_procs()),
+                    ":white_check_mark: *GPUs active* | " + format_status(gpus, get_procs()),
                     color="#22c55e",
                 )
                 last_status_time = now
@@ -836,7 +964,8 @@ def monitor():
                 partial_alerted = True
                 last_alert_time = now
 
-            if active_since is None:
+            # Only start active_since when fully busy (not partial)
+            if not idle_gpus and active_since is None:
                 active_since = now
             idle_since = None
             was_idle   = False
@@ -863,7 +992,6 @@ def run_with_watchdog(target):
 
 def main():
     global WEB_PORT
-    import argparse
     parser = argparse.ArgumentParser(description="Lightweight GPU Monitor")
     parser.add_argument("--once", action="store_true", help="Print status and exit")
     parser.add_argument("--web",  type=int, metavar="PORT", default=0,

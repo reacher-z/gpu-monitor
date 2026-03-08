@@ -5,13 +5,16 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 ## Features
 
 - **Idle alert** — all GPUs < 10% for 5min → alert
+- **Process crash detection** — GPUs suddenly go idle while processes were running → instant alert
 - **Partial idle** — some GPUs idle while others busy → warning
 - **Recovery** — GPUs become active again → notification
 - **Periodic status** — active: every 10min, idle: every 30min
 - **Startup notification** — know when monitor comes online
-- **GPU processes** — shows which processes are using each GPU
+- **GPU processes** — shows which processes are using each GPU, including username
+- **Power draw** — shows watts per GPU in status messages (throttle detection)
 - **Per-machine color** — auto-assigned color bar for multi-machine setups
 - **Uptime tracking** — shows `up 2h30m` or `idle 15min` in status
+- **Prometheus `/metrics`** — expose GPU stats for Grafana/alertmanager (requires `WEB_PORT`)
 - **Watchdog** — auto-restart on crash
 - **Log rotation** — 5MB x 3 backups
 
@@ -115,6 +118,26 @@ bash start.sh status    # check if running
 | Variable | Description |
 |----------|-------------|
 | `IMESSAGE_TO` | Recipient phone/email, comma-separated |
+
+## Prometheus Metrics
+
+When `WEB_PORT` is set, a `/metrics` endpoint is available for Prometheus scraping:
+
+```bash
+export WEB_PORT=8080
+python gpu_monitor.py
+# Metrics at http://localhost:8080/metrics
+```
+
+Exposed metrics: `gpu_utilization_percent`, `gpu_memory_used_mib`, `gpu_memory_total_mib`, `gpu_temperature_celsius`, `gpu_power_watts`, `gpu_clock_sm_mhz`. All labeled with `gpu`, `name`, and `host`.
+
+Add to your `prometheus.yml`:
+```yaml
+scrape_configs:
+  - job_name: gpu
+    static_configs:
+      - targets: ['your-server:8080']
+```
 
 ## GitHub Pages Dashboard
 

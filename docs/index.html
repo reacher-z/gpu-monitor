@@ -348,7 +348,7 @@ function renderGpu(g, procs, accent) {
   const pl = procs[String(g.idx)] || [];
   const accentFade = accent + '22';
   const procsHtml = pl.length
-    ? pl.map(p => `<div class="proc"><span class="proc-name">${esc(p.name)}</span><span class="proc-mem">${p.mem} MiB</span></div>`).join('')
+    ? pl.map(p => `<div class="proc"><span class="proc-name">${esc(p.name)}${p.user ? ` <span style="color:var(--muted);font-size:9px">[${esc(p.user)}]</span>` : ''}</span><span class="proc-mem">${p.mem} MiB</span></div>`).join('')
     : '<span class="no-proc">idle</span>';
 
   return `<div class="gpu-cell">
@@ -369,6 +369,7 @@ function renderGpu(g, procs, accent) {
       <div class="pill-val" style="color:${cv(tempCls(g.temp))}">${g.temp}°</div>
       <div class="pill-lbl">Temp</div>
     </div>
+    ${g.power_w != null ? `<div class="pill"><div class="pill-val" style="color:var(--muted)">${g.power_w}W</div><div class="pill-lbl">Power</div></div>` : ''}
   </div>
   <div class="bar-row">
     <div class="bar-meta"><span class="lbl">Utilization</span><span class="val">${g.util}%</span></div>
