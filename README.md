@@ -101,6 +101,37 @@ bash start.sh restart   # restart
 bash start.sh status    # check if running
 ```
 
+## Example Output
+
+**`--once` status check:**
+
+```
+gpu-cluster-1 | 2026-03-07 14:32 | avg 87% | 72C | 1820W | mem 188G/320G (59%)
+[87% 91% 83% 88% 92% 79% 85% 90%]
+GPU0: python3(18G)[alice] | GPU1: torchrun(22G)[bob] | GPU3: python3(18G)[carol]
+```
+
+**Slack alert when GPUs go idle:**
+
+```
+gpu-cluster-1 | 2026-03-07 15:01 | avg 2% | 38C | idle 8min
+All GPUs idle for 8 minutes. Last active: training job (alice)
+```
+
+**Crash detection alert:**
+
+```
+gpu-cluster-1 | CRASH DETECTED: 3 training processes vanished (PIDs: 12345, 12346, 12347)
+GPUs went from 87% → 1% with no graceful exit. Check your logs.
+```
+
+**`--test-notify` output:**
+
+```
+Test notification sent to: Slack, Discord, ntfy
+Not configured:           Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTalk, Bark, Teams, Pushover, Gotify, Mattermost, Google Chat, Zulip, OpenClaw
+```
+
 ## Environment Variables
 
 ### General
