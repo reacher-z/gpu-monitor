@@ -1,10 +1,5 @@
 # GPU Monitor
 
-[![CI](https://github.com/reacher-z/gpu-monitor/actions/workflows/ci.yml/badge.svg)](https://github.com/reacher-z/gpu-monitor/actions/workflows/ci.yml)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![PyPI](https://img.shields.io/pypi/v/gpu-monitor.svg)](https://pypi.org/project/gpu-monitor/)
-
 Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no external dependencies.
 
 ## Features
