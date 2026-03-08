@@ -3,7 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GPU Monitor</title>
+<title>GPU Monitor — Real-time GPU Fleet Dashboard</title>
+
+<!-- Social / SEO meta -->
+<meta name="description" content="gpu-monitor: lightweight, zero-dependency GPU fleet monitoring with Slack, Discord, Telegram and 17+ notification channels. Open source, MIT licensed.">
+<meta property="og:title" content="GPU Monitor — Real-time GPU Fleet Dashboard">
+<meta property="og:description" content="Lightweight GPU fleet monitoring. Tracks utilization, memory, temperature and processes across all your machines. Pushes alerts to Slack, Discord, Telegram and 17+ channels.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://reacher-z.github.io/gpu-monitor/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="GPU Monitor">
+<meta name="twitter:description" content="Lightweight GPU fleet monitoring — open source, zero dependencies, 20 notification channels.">
+
+<!-- Emoji favicon -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◈</text></svg>">
+
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 
@@ -20,6 +34,7 @@
   --amber:#ffab40;
   --red:#ff4d6d;
   --blue:#40c8ff;
+  --purple:#a78bfa;
   --header-bg:rgba(5,5,15,.82);
   --shadow:none;
 }
@@ -37,6 +52,7 @@
   --amber:#d97706;
   --red:#dc2626;
   --blue:#4f46e5;
+  --purple:#7c3aed;
   --header-bg:rgba(255,255,255,.88);
   --shadow:0 1px 3px rgba(0,0,0,.06),0 6px 20px rgba(79,70,229,.07);
 }
@@ -47,6 +63,7 @@ body {
   font-family:ui-monospace,'SF Mono','Cascadia Code',monospace;
   font-size:13px;
   min-height:100vh;
+  display:flex;flex-direction:column;
 }
 
 /* Dark: dot grid + dual radial glows (fixed so they don't scroll) */
@@ -87,11 +104,14 @@ header {
   position:sticky;top:0;z-index:10;
   backdrop-filter:blur(24px);
   -webkit-backdrop-filter:blur(24px);
+  flex-wrap:wrap;
+  row-gap:8px;
 }
 
 .logo {
   font-size:14px;font-weight:700;letter-spacing:.05em;
   color:var(--text);user-select:none;
+  text-decoration:none;
 }
 [data-theme="dark"] .logo span {
   color:#40c8ff;
@@ -99,13 +119,14 @@ header {
 }
 [data-theme="light"] .logo span { color:#4f46e5; }
 
-.spacer{flex:1}
+.spacer{flex:1;min-width:8px}
 
 .hdr-btn {
   background:none;border:1px solid var(--border);color:var(--muted);
   border-radius:7px;padding:4px 10px;font-size:11px;
   cursor:pointer;font-family:inherit;
   transition:border-color .2s,color .2s;
+  text-decoration:none;display:inline-flex;align-items:center;gap:5px;
 }
 .hdr-btn:hover{border-color:var(--blue);color:var(--blue)}
 #theme-btn{padding:4px 8px;font-size:14px;line-height:1}
@@ -142,6 +163,7 @@ header {
   backdrop-filter:blur(14px);
   -webkit-backdrop-filter:blur(14px);
   box-shadow:var(--shadow);
+  flex-wrap:wrap;
 }
 .g-stat {
   display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -152,7 +174,7 @@ header {
 .g-val{font-size:18px;font-weight:700;line-height:1}
 
 /* ── Machine cards ───────────────────────────────────────────────────────── */
-main{padding:14px 20px 32px;display:flex;flex-direction:column;gap:12px}
+main{padding:14px 20px 0;display:flex;flex-direction:column;gap:12px;flex:1}
 
 .machine {
   background:var(--surface);
@@ -174,6 +196,7 @@ main{padding:14px 20px 32px;display:flex;flex-direction:column;gap:12px}
 .machine-header{
   display:flex;align-items:center;gap:12px;
   padding:12px 16px;border-bottom:1px solid var(--border);
+  flex-wrap:wrap;row-gap:6px;
 }
 [data-theme="dark"] .machine-header{background:rgba(255,255,255,.018)}
 [data-theme="light"] .machine-header{background:var(--surface2)}
@@ -247,7 +270,7 @@ main{padding:14px 20px 32px;display:flex;flex-direction:column;gap:12px}
 .proc-mem{color:var(--muted);white-space:nowrap}
 .no-proc{color:var(--muted);font-size:10px;font-style:italic}
 
-/* Loading / error */
+/* Loading / skeleton */
 .loader{display:flex;align-items:center;justify-content:center;gap:10px;padding:80px 0;color:var(--muted)}
 .spinner{
   width:16px;height:16px;border:2px solid var(--border);
@@ -255,12 +278,178 @@ main{padding:14px 20px 32px;display:flex;flex-direction:column;gap:12px}
   animation:spin .8s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* Skeleton cards */
+@keyframes shimmer {
+  0%{background-position:200% 0}
+  100%{background-position:-200% 0}
+}
+.skel-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;
+}
+.skel-block {
+  border-radius:4px;
+  background:linear-gradient(90deg,var(--surface2) 25%,var(--border-h) 50%,var(--surface2) 75%);
+  background-size:200% 100%;
+  animation:shimmer 1.6s ease-in-out infinite;
+}
+.skel-header{height:46px;margin:0;border-radius:0;border-bottom:1px solid var(--border)}
+.skel-gpu{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.skel-row{height:10px}
+.skel-row.w60{width:60%}
+.skel-row.w40{width:40%}
+.skel-row.w80{width:80%}
+
+/* Fetch error */
 .err-msg{color:var(--red);text-align:center;padding:60px 20px;font-size:12px;line-height:1.8}
+
+/* ── Empty / welcome state ───────────────────────────────────────────────── */
+.welcome {
+  max-width:740px;margin:32px auto 40px;padding:0 20px;
+  display:flex;flex-direction:column;gap:24px;
+}
+.welcome-hero {
+  text-align:center;padding:40px 24px 32px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:18px;
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  box-shadow:var(--shadow);
+}
+.welcome-icon {
+  font-size:48px;line-height:1;margin-bottom:16px;
+  display:block;
+  filter:drop-shadow(0 0 18px rgba(64,200,255,.45));
+}
+.welcome-hero h1 {
+  font-size:22px;font-weight:800;letter-spacing:.03em;margin-bottom:8px;color:var(--text);
+}
+[data-theme="dark"] .welcome-hero h1 span {color:#40c8ff;text-shadow:0 0 22px rgba(64,200,255,.6)}
+[data-theme="light"] .welcome-hero h1 span {color:#4f46e5}
+.welcome-hero p {
+  font-size:13px;line-height:1.75;color:var(--muted);max-width:520px;margin:0 auto 20px;
+}
+.cta-row {
+  display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
+}
+.btn-primary {
+  background:var(--blue);color:#fff;
+  border:none;border-radius:9px;
+  padding:9px 20px;font-size:12px;font-weight:700;
+  letter-spacing:.04em;cursor:pointer;font-family:inherit;
+  text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+  transition:opacity .18s,transform .15s;
+  box-shadow:0 2px 12px rgba(64,200,255,.28);
+}
+[data-theme="light"] .btn-primary{box-shadow:0 2px 12px rgba(79,70,229,.25)}
+.btn-primary:hover{opacity:.85;transform:translateY(-1px)}
+.btn-secondary {
+  background:none;border:1px solid var(--border);color:var(--muted);
+  border-radius:9px;padding:9px 20px;font-size:12px;font-weight:600;
+  cursor:pointer;font-family:inherit;
+  text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+  transition:border-color .18s,color .18s;
+}
+.btn-secondary:hover{border-color:var(--blue);color:var(--blue)}
+
+/* Feature pills */
+.features {
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;
+}
+.feat {
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:14px 16px;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:var(--shadow);
+}
+.feat-icon{font-size:18px;margin-bottom:8px;display:block}
+.feat-title{font-size:11px;font-weight:700;letter-spacing:.04em;margin-bottom:4px;color:var(--text)}
+.feat-desc{font-size:10px;line-height:1.65;color:var(--muted)}
+
+/* Setup guide accordion */
+.setup-card {
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:var(--shadow);
+}
+.setup-title {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px;cursor:pointer;user-select:none;
+  font-size:12px;font-weight:700;letter-spacing:.03em;
+  border-bottom:1px solid var(--border);
+}
+.setup-title:hover{color:var(--blue)}
+.setup-title .chevron {transition:transform .25s;display:inline-block;font-style:normal}
+.setup-card.open .chevron{transform:rotate(180deg)}
+.setup-body {
+  display:none;padding:20px 18px;
+  font-size:11px;line-height:2;color:var(--muted);
+}
+.setup-card.open .setup-body{display:block}
+.setup-body ol{padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.setup-body li{color:var(--muted)}
+.setup-body li strong{color:var(--text)}
+code {
+  font-family:inherit;font-size:10.5px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:4px;padding:1px 6px;color:var(--blue);
+  white-space:pre;
+}
+.setup-note {
+  margin-top:14px;padding:10px 14px;
+  background:rgba(64,200,255,.06);border:1px solid rgba(64,200,255,.15);
+  border-radius:8px;font-size:10px;color:var(--muted);line-height:1.7;
+}
+[data-theme="light"] .setup-note{background:rgba(79,70,229,.05);border-color:rgba(79,70,229,.15)}
+
+/* Channels strip */
+.channels {
+  display:flex;flex-wrap:wrap;gap:6px;padding-top:4px;
+}
+.ch-pill {
+  font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  padding:3px 9px;border-radius:20px;
+  background:var(--surface2);border:1px solid var(--border);color:var(--muted);
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+footer {
+  padding:16px 20px;
+  border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:8px;
+  font-size:10px;color:var(--muted);
+  margin-top:24px;
+}
+footer a{color:var(--muted);text-decoration:none;transition:color .15s}
+footer a:hover{color:var(--blue)}
+.footer-brand{display:flex;align-items:center;gap:6px;font-weight:700;font-size:10px}
+[data-theme="dark"] .footer-brand span{color:#40c8ff}
+[data-theme="light"] .footer-brand span{color:#4f46e5}
+
+/* ── Mobile tweaks ───────────────────────────────────────────────────────── */
+@media (max-width:560px) {
+  header{padding:8px 14px;gap:8px}
+  #clock{display:none}
+  #countdown{display:none}
+  .g-stat{padding:9px 12px;min-width:60px}
+  .g-val{font-size:15px}
+  #global-bar{margin:10px 14px 0}
+  main{padding:10px 14px 0}
+  .welcome{padding:0 14px;margin:20px auto 28px}
+  .welcome-hero{padding:28px 16px 24px}
+  .welcome-hero h1{font-size:18px}
+  footer{padding:14px}
+}
 </style>
 </head>
 <body>
 <header>
-  <div class="logo">◈ gpu<span>monitor</span></div>
+  <a class="logo" href="https://github.com/reacher-z/gpu-monitor" target="_blank" rel="noopener">◈ gpu<span>monitor</span></a>
   <span class="spacer"></span>
   <div id="countdown">
     <svg width="14" height="14" viewBox="0 0 14 14">
@@ -269,8 +458,12 @@ main{padding:14px 20px 32px;display:flex;flex-direction:column;gap:12px}
     </svg>
     <span id="cd-text">30s</span>
   </div>
-  <button class="hdr-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle theme">☀</button>
-  <button class="hdr-btn" onclick="load()">↻ Refresh</button>
+  <a class="hdr-btn" href="https://github.com/reacher-z/gpu-monitor" target="_blank" rel="noopener" title="View on GitHub">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    GitHub
+  </a>
+  <button class="hdr-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle theme (T)">☀</button>
+  <button class="hdr-btn" onclick="load()" title="Refresh (R)">↻ Refresh</button>
   <div id="status"><span class="dot" id="dot"></span><span id="status-text">loading…</span></div>
   <span id="clock"></span>
 </header>
@@ -285,7 +478,133 @@ main{padding:14px 20px 32px;display:flex;flex-direction:column;gap:12px}
   <div class="g-stat"><div class="g-val" id="g-procs">—</div><div class="g-label">Processes</div></div>
 </div>
 
-<main id="main"><div class="loader"><div class="spinner"></div>Loading…</div></main>
+<main id="main">
+  <!-- skeleton shown during first fetch -->
+  <div id="skeleton">
+    <div class="skel-card">
+      <div class="skel-block skel-header"></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1px;background:var(--border)">
+        <div class="skel-gpu">
+          <div class="skel-block skel-row w60"></div>
+          <div class="skel-block skel-row w80"></div>
+          <div class="skel-block skel-row w40"></div>
+          <div class="skel-block skel-row w60"></div>
+        </div>
+        <div class="skel-gpu">
+          <div class="skel-block skel-row w60"></div>
+          <div class="skel-block skel-row w80"></div>
+          <div class="skel-block skel-row w40"></div>
+          <div class="skel-block skel-row w60"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Welcome / empty state (hidden until needed) -->
+<div id="welcome-state" style="display:none">
+  <div class="welcome">
+    <div class="welcome-hero">
+      <span class="welcome-icon">◈</span>
+      <h1>GPU Fleet <span>Monitor</span></h1>
+      <p>Lightweight, zero-dependency GPU monitoring for research clusters and workstations. Track utilization, memory, temperature, and processes across every machine — with alerts to 20 notification channels.</p>
+      <div class="cta-row">
+        <a class="btn-primary" href="https://github.com/reacher-z/gpu-monitor" target="_blank" rel="noopener">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          View on GitHub
+        </a>
+        <a class="btn-secondary" href="#setup-guide" onclick="openSetup()">
+          Setup in 5 minutes →
+        </a>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="feat">
+        <span class="feat-icon">⚡</span>
+        <div class="feat-title">Zero Dependencies</div>
+        <div class="feat-desc">Single Python file. Runs anywhere nvidia-smi is available. No pip installs required beyond <code>pynvml</code>.</div>
+      </div>
+      <div class="feat">
+        <span class="feat-icon">🔔</span>
+        <div class="feat-title">20 Alert Channels</div>
+        <div class="feat-desc">Slack, Discord, Telegram, Email, PagerDuty, Teams, Feishu, WeCom, DingTalk, ntfy, Pushover and more.</div>
+      </div>
+      <div class="feat">
+        <span class="feat-icon">📊</span>
+        <div class="feat-title">Prometheus + Grafana</div>
+        <div class="feat-desc">Built-in /metrics endpoint and a ready-made Grafana dashboard. Drop-in docker-compose stack included.</div>
+      </div>
+      <div class="feat">
+        <span class="feat-icon">🌐</span>
+        <div class="feat-title">This Live Dashboard</div>
+        <div class="feat-desc">Push stats to GitHub Pages — zero infrastructure. Anyone with the URL sees your fleet in real time.</div>
+      </div>
+      <div class="feat">
+        <span class="feat-icon">🛡️</span>
+        <div class="feat-title">Smart Alerting</div>
+        <div class="feat-desc">Memory leak detection, temperature hysteresis, power throttle alerts, and ECC error tracking.</div>
+      </div>
+      <div class="feat">
+        <span class="feat-icon">☸️</span>
+        <div class="feat-title">Kubernetes Ready</div>
+        <div class="feat-desc">DaemonSet manifests and Kustomize overlays included. Deploy across your cluster in minutes.</div>
+      </div>
+    </div>
+
+    <div class="setup-card" id="setup-guide">
+      <div class="setup-title" onclick="toggleSetup(this)">
+        <span>Quick Setup — connect your machines to this dashboard</span>
+        <i class="chevron">▾</i>
+      </div>
+      <div class="setup-body">
+        <ol>
+          <li><strong>Install</strong><br>
+            <code>pip install pynvml requests</code><br>
+            <code>curl -O https://raw.githubusercontent.com/reacher-z/gpu-monitor/main/gpu_monitor.py</code>
+          </li>
+          <li><strong>Create a GitHub token</strong><br>
+            Go to <a href="https://github.com/settings/tokens" target="_blank" rel="noopener" style="color:var(--blue)">github.com/settings/tokens</a> → New token (classic) → tick <code>public_repo</code> scope.
+          </li>
+          <li><strong>Set environment variables</strong><br>
+            <code>export GITHUB_PAGES_REPO=your-username/gpu-monitor</code><br>
+            <code>export GITHUB_PAGES_TOKEN=ghp_...</code>
+          </li>
+          <li><strong>Run on each machine</strong><br>
+            <code>python gpu_monitor.py</code><br>
+            Stats are pushed every 30 seconds and appear here automatically.
+          </li>
+          <li><strong>Add Slack / Discord alerts (optional)</strong><br>
+            <code>export SLACK_WEBHOOK_URL=https://hooks.slack.com/...</code><br>
+            Run <code>python gpu_monitor.py --channels</code> to see all 20 options.
+          </li>
+        </ol>
+        <div class="setup-note">
+          No dashboard data is stored on any server. Stats are committed as JSON files directly to your GitHub repository — the same one hosting this page.
+        </div>
+        <div style="margin-top:16px;font-size:10px;color:var(--muted)">Notification channels:</div>
+        <div class="channels">
+          <span class="ch-pill">Slack</span><span class="ch-pill">Discord</span><span class="ch-pill">Telegram</span>
+          <span class="ch-pill">Email</span><span class="ch-pill">PagerDuty</span><span class="ch-pill">Teams</span>
+          <span class="ch-pill">Google Chat</span><span class="ch-pill">Feishu</span><span class="ch-pill">WeCom</span>
+          <span class="ch-pill">DingTalk</span><span class="ch-pill">Bark</span><span class="ch-pill">ntfy</span>
+          <span class="ch-pill">Gotify</span><span class="ch-pill">Pushover</span><span class="ch-pill">Rocket.Chat</span>
+          <span class="ch-pill">Mattermost</span><span class="ch-pill">Zulip</span><span class="ch-pill">SMS</span>
+          <span class="ch-pill">iMessage</span><span class="ch-pill">OpenClaw</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-brand">◈ gpu<span>monitor</span> — open source GPU fleet monitoring</div>
+  <div style="display:flex;gap:16px;align-items:center">
+    <a href="https://github.com/reacher-z/gpu-monitor" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://github.com/reacher-z/gpu-monitor/blob/main/README.md" target="_blank" rel="noopener">Docs</a>
+    <a href="https://github.com/reacher-z/gpu-monitor/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+  </div>
+</footer>
 
 <script>
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -322,6 +641,15 @@ document.addEventListener('keydown', e => {
   if (e.key === 't' || e.key === 'T') toggleTheme();
   if (e.key === 'r' || e.key === 'R') load();
 });
+
+// ── Setup accordion ───────────────────────────────────────────────────────────
+function toggleSetup(el) {
+  el.closest('.setup-card').classList.toggle('open');
+}
+function openSetup() {
+  const card = document.getElementById('setup-guide');
+  if (card) card.classList.add('open');
+}
 
 // ── Color helpers ─────────────────────────────────────────────────────────────
 const utilCls = p => p < 40 ? 'green' : p < 70 ? 'amber' : 'red';
@@ -411,6 +739,18 @@ function renderMachine(d) {
 </div>`;
 }
 
+// ── Empty state helpers ───────────────────────────────────────────────────────
+function showEmptyState() {
+  document.getElementById('skeleton').style.display = 'none';
+  document.getElementById('welcome-state').style.display = '';
+  document.getElementById('dot').className = 'dot err';
+  document.getElementById('status-text').textContent = 'no machines';
+}
+
+function hideEmptyState() {
+  document.getElementById('welcome-state').style.display = 'none';
+}
+
 // ── Data fetching ─────────────────────────────────────────────────────────────
 async function fetchJSON(url) {
   const r = await fetch(url + '?_=' + Date.now(), { cache: 'no-store' });
@@ -418,19 +758,34 @@ async function fetchJSON(url) {
   return r.json();
 }
 
+let _firstLoad = true;
+
 async function load() {
+  if (_firstLoad) {
+    // Show skeleton only on first load; subsequent refreshes keep existing content visible
+    document.getElementById('skeleton').style.display = '';
+  }
+
   try {
     const idx      = await fetchJSON(`${DATA_BASE}/index.json`);
     const machines = idx.machines || [];
 
     if (!machines.length) {
-      document.getElementById('main').innerHTML =
-        '<div class="err-msg">No machines found.<br>Start gpu_monitor.py with <code>GITHUB_PAGES_REPO</code> set.<br><small style="color:var(--muted)">Debug: <code>python gpu_monitor.py --once</code> &nbsp;|&nbsp; <code>python gpu_monitor.py --channels</code></small></div>';
+      showEmptyState();
+      _firstLoad = false;
       return;
     }
 
+    hideEmptyState();
+
     const results = await Promise.allSettled(machines.map(h => fetchJSON(`${DATA_BASE}/${h}.json`)));
     const data    = results.filter(r => r.status === 'fulfilled').map(r => r.value).sort((a,b) => b.ts - a.ts);
+
+    if (!data.length) {
+      showEmptyState();
+      _firstLoad = false;
+      return;
+    }
 
     const totalGpus    = data.reduce((s,d) => s + d.gpus.length, 0);
     const allUtils     = data.flatMap(d => d.gpus.map(g => g.util));
@@ -463,17 +818,27 @@ async function load() {
     }
 
     document.getElementById('g-procs').textContent  = totalProcs;
-    document.getElementById('main').innerHTML        = data.map(renderMachine).join('');
+
+    // Replace skeleton with real cards on first load; update in-place on refresh
+    document.getElementById('skeleton').style.display = 'none';
+    document.getElementById('main').innerHTML =
+      '<div id="skeleton" style="display:none"></div>' +
+      data.map(renderMachine).join('');
+
     document.getElementById('dot').className         = 'dot';
     document.getElementById('status-text').textContent = `${data.length} machine${data.length!==1?'s':''}`;
 
   } catch(e) {
+    document.getElementById('skeleton').style.display = 'none';
     document.getElementById('dot').className = 'dot err';
     document.getElementById('status-text').textContent = 'error';
-    document.getElementById('main').innerHTML =
-      `<div class="err-msg">Failed to load data.<br><small>${esc(String(e))}</small><br>` +
-      `Make sure GitHub Pages is enabled and GITHUB_PAGES_REPO is set in your .env</div>`;
+    // Only show error overlay if we haven't already rendered machine cards
+    if (_firstLoad) {
+      showEmptyState();
+    }
+    console.error('gpu-monitor fetch error:', e);
   }
+  _firstLoad = false;
 }
 
 // ── Clock & countdown ─────────────────────────────────────────────────────────
