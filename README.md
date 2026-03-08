@@ -2,14 +2,15 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/gpu-watchdog.svg)](https://pypi.org/project/gpu-watchdog/)
 [![20 channels](https://img.shields.io/badge/channels-20-blueviolet.svg)](#supported-notification-channels)
 
 **Get alerted on Slack, Discord, Telegram (20 notification channels total) when your GPU training crashes, goes idle, or overheats.** Single Python file. Zero dependencies. Works in the background while you sleep.
 
 ```bash
-pip install gpu-monitor
+pip install gpu-watchdog
 export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK"
-python gpu_monitor.py
+gpu-monitor   # or: python gpu_monitor.py
 ```
 
 ---
@@ -44,7 +45,7 @@ python gpu_monitor.py
 
 ```bash
 # Option 1: pip (recommended)
-pip install gpu-monitor
+pip install gpu-watchdog
 
 # Option 2: single file, no install needed
 curl -O https://raw.githubusercontent.com/reacher-z/gpu-monitor/main/gpu_monitor.py
