@@ -2,13 +2,13 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![PyPI](https://img.shields.io/pypi/v/gpu-watchdog.svg)](https://pypi.org/project/gpu-watchdog/)
+[![PyPI](https://img.shields.io/pypi/v/gpuwatch.svg)](https://pypi.org/project/gpuwatch/)
 [![20 channels](https://img.shields.io/badge/notification%20channels-20%20built--in-blueviolet.svg)](#supported-notification-channels)
 
 **Stop losing GPU-hours to silent crashes.** gpu-monitor runs in the background and instantly alerts you on Slack, Discord, Telegram, or [19 other channels](#supported-notification-channels) the moment your training job crashes, your GPU goes idle, or your machine overheats — while you sleep, travel, or work on something else.
 
 ```bash
-pip install gpu-watchdog
+pip install gpuwatch
 export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
 gpu-monitor
 ```
@@ -86,7 +86,7 @@ gpu-cluster-1 | GPU 1 uncorrected ECC errors: +3 since last check | retire this 
 
 ```bash
 # Option A: pip (recommended)
-pip install gpu-watchdog
+pip install gpuwatch
 
 # Option B: single file, zero install
 curl -O https://raw.githubusercontent.com/reacher-z/gpu-monitor/main/gpu_monitor.py

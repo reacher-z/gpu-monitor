@@ -3,7 +3,7 @@ requires = ["setuptools>=61,<69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gpu-watchdog"
+name = "gpuwatch"
 version = "0.3.0"
 description = "Lightweight NVIDIA GPU monitor — 20 notification channels (Slack, Discord, Telegram, ntfy, Teams, PagerDuty, Zulip, OpenClaw, and more), Prometheus/InfluxDB/Datadog metrics, crash/ECC detection, Kubernetes, GitHub Pages dashboard"
 readme = "README.md"
