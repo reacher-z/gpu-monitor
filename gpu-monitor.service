@@ -1,0 +1,53 @@
+[Unit]
+Description=GPU Monitor — NVIDIA GPU utilization alerting
+After=network-online.target
+Wants=network-online.target
+# Restart if nvidia-smi isn't ready yet at boot
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=/home/%i
+ExecStart=/usr/bin/env python3 /home/%i/gpu_monitor.py
+Restart=on-failure
+RestartSec=10s
+
+# — Notification channels — uncomment and set what you use —
+# Environment=SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+# Environment=DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR/WEBHOOK
+# Environment=TELEGRAM_BOT_TOKEN=your-bot-token
+# Environment=TELEGRAM_CHAT_ID=your-chat-id
+# Environment=NTFY_URL=https://ntfy.sh/your-topic
+# Environment=GOTIFY_URL=http://gotify.example.com
+# Environment=GOTIFY_TOKEN=your-token
+# Environment=PUSHOVER_TOKEN=your-token
+# Environment=PUSHOVER_USER=your-user-key
+# Environment=TEAMS_WEBHOOK_URL=https://your-org.webhook.office.com/webhookb2/...
+# Environment=MATTERMOST_WEBHOOK_URL=https://mattermost.example.com/hooks/TOKEN
+# Environment=ROCKETCHAT_WEBHOOK_URL=https://rocketchat.example.com/hooks/TOKEN
+# Environment=GOOGLE_CHAT_WEBHOOK_URL=https://chat.googleapis.com/v1/spaces/...
+# Environment=ZULIP_SITE=https://yourorg.zulipchat.com
+# Environment=ZULIP_EMAIL=bot@yourorg.zulipchat.com
+# Environment=ZULIP_API_KEY=your-api-key
+# Environment=WECOM_WEBHOOK_URL=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...
+# Environment=FEISHU_WEBHOOK_URL=https://open.feishu.cn/open-apis/bot/v2/hook/...
+# Environment=DINGTALK_WEBHOOK_URL=https://oapi.dingtalk.com/robot/send?access_token=...
+# Environment=BARK_URL=https://api.day.app/YOUR_DEVICE_KEY
+# Environment=OPENCLAW_WEBHOOK_URL=http://your-openclaw-host:18789/hooks/wake
+
+# — Optional —
+# Environment=CHECK_INTERVAL=60
+# Environment=IDLE_THRESHOLD=10
+# Environment=IDLE_MINUTES=5
+# Environment=ALERT_COOLDOWN=30
+# Environment=LOG_FILE=/var/log/gpu-monitor.log
+# Environment=WEB_PORT=8080
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gpu-monitor
+
+[Install]
+WantedBy=multi-user.target

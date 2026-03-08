@@ -103,6 +103,19 @@ bash start.sh restart   # restart
 bash start.sh status    # check if running
 ```
 
+Or run as a **systemd service** (auto-start on boot):
+
+```bash
+# 1. Download and configure the service file
+curl -O https://raw.githubusercontent.com/reacher-z/gpu-monitor/main/gpu-monitor.service
+# 2. Edit Environment= lines to set your notification channel vars
+# 3. Install and start
+sudo cp gpu-monitor.service /etc/systemd/system/gpu-monitor@$USER.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now gpu-monitor@$USER
+sudo journalctl -u gpu-monitor@$USER -f   # follow logs
+```
+
 ## Example Output
 
 **`--once` status check:**
