@@ -30,7 +30,7 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 | | gpu-monitor | gpustat | nvitop | wandb |
 |---|---|---|---|---|
 | Background alerts | ✅ | ❌ | ❌ | ❌ |
-| Multi-channel notifications | ✅ 19 channels | ❌ | ❌ | Slack only |
+| Multi-channel notifications | ✅ 19 + 80 via Apprise | ❌ | ❌ | Slack only |
 | Zero dependencies | ✅ stdlib only | ❌ | ❌ | ❌ |
 | Single file deploy | ✅ | ❌ | ❌ | ❌ |
 | Prometheus `/metrics` | ✅ | ❌ | ✅ | ❌ |
@@ -372,6 +372,20 @@ Deploy to each machine — each gets an auto-assigned color in Slack/Discord and
 ### Bark (iOS)
 1. Install [Bark](https://github.com/Finb/Bark) from the App Store
 2. Copy your device URL → `BARK_URL` (e.g. `https://api.day.app/YOUR_DEVICE_KEY`)
+
+## Setting Up Apprise (80+ Extra Services)
+
+[Apprise](https://github.com/caronc/apprise) is an optional dependency that adds support for 80+ additional notification services (AWS SNS, Pushbullet, Home Assistant, Matrix, Ryver, SparkPost, and many more) through a single URL-based configuration.
+
+```bash
+pip install apprise
+export APPRISE_URLS="slack://TokenA/TokenB/TokenC/#channel tgram://bot_token/chat_id"
+python gpu_monitor.py
+```
+
+The core gpu-monitor has zero dependencies — Apprise is only used if it is installed and `APPRISE_URLS` is set.
+
+For a full list of supported URL formats see the [Apprise wiki](https://github.com/caronc/apprise/wiki).
 
 ## Setting Up ntfy
 
