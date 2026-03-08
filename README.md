@@ -19,6 +19,8 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 - **Per-machine color** — auto-assigned color bar for multi-machine setups
 - **Uptime tracking** — shows `up 2h30m` or `idle 15min` in status
 - **Prometheus `/metrics`** — expose GPU stats for Grafana/alertmanager (requires `WEB_PORT`)
+- **16 notification channels** — Slack, Discord, Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTalk, Bark, ntfy, Gotify, Pushover, Mattermost, Teams, OpenClaw
+- **`--test-notify`** — verify all configured channels with one command
 - **Watchdog** — auto-restart on crash
 - **Log rotation** — 5MB x 3 backups
 
