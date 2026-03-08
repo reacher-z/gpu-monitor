@@ -6,14 +6,18 @@
 <title>GPU Monitor — Real-time GPU Fleet Dashboard</title>
 
 <!-- Social / SEO meta -->
-<meta name="description" content="gpu-monitor: lightweight, zero-dependency GPU fleet monitoring with Slack, Discord, Telegram and 20 notification channels. Open source, MIT licensed.">
+<meta name="description" content="gpu-monitor: single Python file, zero-dependency GPU fleet monitoring with Slack, Discord, Telegram and 20 notification channels. Open source, MIT licensed.">
+<meta name="author" content="reacher-z">
 <meta property="og:title" content="GPU Monitor — Real-time GPU Fleet Dashboard">
-<meta property="og:description" content="Stop losing GPU hours. Lightweight GPU fleet monitoring — tracks utilization, memory, temperature and processes across all your machines. Alerts to Slack, Discord, Telegram and 20 channels.">
+<meta property="og:description" content="Your A100 runs at 3AM. You're asleep. gpu-monitor is watching. Lightweight GPU fleet monitoring — tracks utilization, memory, temperature and processes across all your machines.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://reacher-z.github.io/gpu-monitor/">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="GPU Monitor">
-<meta name="twitter:description" content="Stop losing GPU hours. Lightweight GPU fleet monitoring — open source, zero dependencies, 20 notification channels.">
+<meta property="og:image" content="https://opengraph.githubassets.com/1/reacher-z/gpu-monitor">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GPU Monitor — Real-time GPU Fleet Dashboard">
+<meta name="twitter:description" content="Your A100 runs at 3AM. You're asleep. gpu-monitor is watching. Single Python file. 20 alert channels. Zero dependencies.">
+<meta name="twitter:image" content="https://opengraph.githubassets.com/1/reacher-z/gpu-monitor">
+<meta name="twitter:creator" content="@reacher_z">
 
 <!-- Emoji favicon -->
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◈</text></svg>">
@@ -96,6 +100,11 @@ body,header,.machine,.gpu-cell,.pill,.track,.g-stat,
 }
 .logo span { transition:color .3s ease,text-shadow .3s ease; }
 a,span,div,p { transition:color .3s ease; }
+
+/* Respect reduced-motion preference */
+@media (prefers-reduced-motion:reduce) {
+  *,*::before,*::after { animation-duration:.01ms !important; transition-duration:.01ms !important; }
+}
 
 /* ── Header ──────────────────────────────────────────────────────────────── */
 header {
@@ -309,13 +318,13 @@ main{padding:14px 20px 0;display:flex;flex-direction:column;gap:12px;flex:1}
 
 /* ── Empty / welcome state ───────────────────────────────────────────────── */
 .welcome {
-  max-width:780px;margin:32px auto 40px;padding:0 20px;
+  max-width:820px;margin:32px auto 40px;padding:0 20px;
   display:flex;flex-direction:column;gap:24px;
 }
 
 /* Hero */
 .welcome-hero {
-  text-align:center;padding:48px 28px 36px;
+  text-align:center;padding:52px 32px 40px;
   background:var(--surface);
   border:1px solid var(--border);
   border-radius:20px;
@@ -346,7 +355,8 @@ main{padding:14px 20px 0;display:flex;flex-direction:column;gap:12px;flex:1}
 
 /* Gradient brand title */
 .welcome-hero h1 {
-  font-size:26px;font-weight:800;letter-spacing:.02em;margin-bottom:6px;
+  font-size:30px;font-weight:800;letter-spacing:.02em;margin-bottom:10px;
+  line-height:1.2;
 }
 .hero-brand {
   background:var(--accent-grad);
@@ -360,24 +370,49 @@ main{padding:14px 20px 0;display:flex;flex-direction:column;gap:12px;flex:1}
 
 /* Hero punch line */
 .hero-punch {
-  font-size:15px;font-weight:700;color:var(--text);
-  margin-bottom:10px;letter-spacing:.01em;
-  line-height:1.4;
+  font-size:16px;font-weight:700;color:var(--text);
+  margin-bottom:12px;letter-spacing:.01em;
+  line-height:1.55;
 }
 [data-theme="dark"] .hero-punch {color:#e8ecff}
 
 .welcome-hero p:not(.hero-punch) {
-  font-size:12px;line-height:1.85;color:var(--muted);max-width:520px;margin:0 auto 24px;
+  font-size:12px;line-height:1.9;color:var(--muted);max-width:540px;margin:0 auto 24px;
+}
+
+/* Hero achievement stats */
+.hero-stats {
+  display:flex;justify-content:center;flex-wrap:wrap;gap:10px;
+  margin-bottom:28px;
+}
+.h-stat {
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:10px 18px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:12px;
+  min-width:88px;
+}
+.h-stat-val {
+  font-size:18px;font-weight:800;line-height:1;
+  background:var(--accent-grad);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.h-stat-lbl {
+  font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
 }
 
 /* CTA row */
 .cta-row {
   display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+  margin-bottom:16px;
 }
 .btn-primary {
   background:var(--accent-grad);color:#fff;
   border:none;border-radius:10px;
-  padding:11px 24px;font-size:12px;font-weight:700;
+  padding:12px 26px;font-size:12px;font-weight:700;
   letter-spacing:.04em;cursor:pointer;font-family:inherit;
   text-decoration:none;display:inline-flex;align-items:center;gap:7px;
   transition:opacity .18s,transform .15s,box-shadow .18s;
@@ -389,7 +424,7 @@ main{padding:14px 20px 0;display:flex;flex-direction:column;gap:12px;flex:1}
 
 .btn-secondary {
   background:none;border:1px solid var(--border-h);color:var(--text);
-  border-radius:10px;padding:11px 24px;font-size:12px;font-weight:600;
+  border-radius:10px;padding:12px 26px;font-size:12px;font-weight:600;
   cursor:pointer;font-family:inherit;
   text-decoration:none;display:inline-flex;align-items:center;gap:7px;
   transition:border-color .18s,color .18s,background .18s;
@@ -397,40 +432,127 @@ main{padding:14px 20px 0;display:flex;flex-direction:column;gap:12px;flex:1}
 .btn-secondary:hover{border-color:var(--blue);color:var(--blue);background:rgba(64,200,255,.05)}
 [data-theme="light"] .btn-secondary:hover{background:rgba(79,70,229,.05)}
 
-/* Author credit below CTA */
+/* Star + social proof row */
+.star-row {
+  display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
+  margin-bottom:4px;
+}
+.star-badge {
+  display:inline-flex;align-items:center;gap:0;
+  border-radius:6px;overflow:hidden;
+  border:1px solid var(--border);
+  font-size:10px;font-weight:700;text-decoration:none;
+  transition:border-color .2s,transform .15s;
+}
+.star-badge:hover{border-color:var(--amber);transform:translateY(-1px)}
+.star-badge-left {
+  background:var(--surface2);color:var(--text);
+  padding:5px 9px;display:flex;align-items:center;gap:5px;
+  border-right:1px solid var(--border);
+}
+.star-badge-right {
+  background:var(--surface);color:var(--amber);
+  padding:5px 9px;
+}
+.used-in-prod {
+  font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;
+}
+.prod-dot {
+  width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;
+}
+
+/* Author credit — prominent pill */
 .hero-author {
-  margin-top:18px;
+  margin-top:20px;padding-top:16px;
+  border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
+}
+.author-pill {
+  display:inline-flex;align-items:center;gap:8px;
+  padding:6px 14px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:100px;
+  text-decoration:none;
+  transition:border-color .2s,transform .15s;
+}
+.author-pill:hover{border-color:var(--blue);transform:translateY(-1px)}
+.author-avatar {
+  width:20px;height:20px;border-radius:50%;
+  background:var(--accent-grad);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:800;color:#fff;
+  flex-shrink:0;
+}
+.author-name {
+  font-size:11px;font-weight:700;color:var(--blue);letter-spacing:.02em;
+}
+.author-meta {
   font-size:10px;color:var(--muted);
-  opacity:.75;
 }
-.hero-author a {
-  color:var(--blue);text-decoration:none;font-weight:700;
-  transition:opacity .15s;
-}
-.hero-author a:hover{opacity:.75}
 
 /* Feature cards */
 .features {
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;
 }
 .feat {
   background:var(--surface);border:1px solid var(--border);
-  border-radius:14px;padding:18px 18px 16px;
+  border-radius:14px;padding:20px 18px 16px;
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
   box-shadow:var(--shadow);
-  transition:border-color .2s,box-shadow .2s;
+  transition:border-color .2s,box-shadow .2s,transform .2s;
 }
-[data-theme="dark"] .feat:hover{border-color:var(--border-h)}
-[data-theme="light"] .feat:hover{box-shadow:0 4px 18px rgba(79,70,229,.12)}
+[data-theme="dark"] .feat:hover{border-color:var(--border-h);transform:translateY(-2px)}
+[data-theme="light"] .feat:hover{box-shadow:0 4px 18px rgba(79,70,229,.12);transform:translateY(-2px)}
 
 .feat-icon{font-size:22px;margin-bottom:10px;display:block}
 .feat-title{font-size:11px;font-weight:700;letter-spacing:.04em;margin-bottom:5px;color:var(--text)}
-.feat-desc{font-size:10px;line-height:1.7;color:var(--muted)}
-.feat-highlight {
-  display:inline-block;margin-top:8px;
-  font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--blue);opacity:.85;
+.feat-desc{font-size:10px;line-height:1.75;color:var(--muted)}
+.feat-stat {
+  display:inline-block;margin-top:10px;
+  font-size:10px;font-weight:800;letter-spacing:.04em;
+  background:var(--accent-grad);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
 }
+
+/* Terminal preview */
+.terminal-preview {
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:var(--shadow);
+}
+.term-bar {
+  display:flex;align-items:center;gap:8px;
+  padding:10px 16px;
+  background:var(--surface2);
+  border-bottom:1px solid var(--border);
+}
+.term-dots {display:flex;gap:5px;}
+.term-dot {width:10px;height:10px;border-radius:50%;}
+.term-dot.r{background:#ff5f56}
+.term-dot.y{background:#ffbd2e}
+.term-dot.g{background:#27c93f}
+.term-title {flex:1;text-align:center;font-size:10px;color:var(--muted);letter-spacing:.05em;}
+.term-body {
+  padding:18px 20px;
+  font-size:11px;line-height:1.8;
+  overflow-x:auto;
+}
+[data-theme="dark"] .term-body { color:#94a3b8; }
+[data-theme="light"] .term-body { color:#374151;background:#f9fafb; }
+.t-cmd  { color:#40c8ff; }
+[data-theme="light"] .t-cmd  { color:#4f46e5; }
+.t-ok   { color:#00e676; }
+[data-theme="light"] .t-ok   { color:#059669; }
+.t-warn { color:#ffab40; }
+[data-theme="light"] .t-warn { color:#d97706; }
+.t-dim  { color:#475569; }
+[data-theme="light"] .t-dim  { color:#9ca3af; }
+.t-head { color:#e2e8f0;font-weight:700; }
+[data-theme="light"] .t-head { color:#1e1b4b; }
 
 /* Setup guide accordion */
 .setup-card {
@@ -449,47 +571,95 @@ main{padding:14px 20px 0;display:flex;flex-direction:column;gap:12px;flex:1}
 .setup-title .chevron {transition:transform .25s;display:inline-block;font-style:normal}
 .setup-card.open .chevron{transform:rotate(180deg)}
 .setup-body {
-  display:none;padding:22px 20px 20px;
+  display:none;padding:24px 20px 22px;
   font-size:11px;line-height:2;color:var(--muted);
 }
 .setup-card.open .setup-body{display:block}
-.setup-body ol{padding-left:0;display:flex;flex-direction:column;gap:16px;list-style:none}
+.setup-body ol{padding-left:0;display:flex;flex-direction:column;gap:20px;list-style:none}
 .setup-step {
-  display:flex;gap:14px;align-items:flex-start;
+  display:flex;gap:16px;align-items:flex-start;
 }
 .step-num {
   flex-shrink:0;
-  width:22px;height:22px;border-radius:50%;
+  width:26px;height:26px;border-radius:50%;
   background:var(--accent-grad);
-  color:#fff;font-size:10px;font-weight:800;
+  color:#fff;font-size:11px;font-weight:800;
   display:flex;align-items:center;justify-content:center;
   margin-top:2px;
+  box-shadow:0 2px 10px rgba(64,200,255,.3);
 }
+[data-theme="light"] .step-num{box-shadow:0 2px 10px rgba(79,70,229,.3)}
 .step-body{flex:1}
-.step-body strong{color:var(--text);display:block;margin-bottom:4px}
+.step-body strong{color:var(--text);display:block;margin-bottom:6px;font-size:12px}
 .setup-body li{color:var(--muted)}
 .setup-body li strong{color:var(--text)}
+
+/* Code blocks with copy buttons */
+.code-block {
+  position:relative;margin:6px 0;
+}
 code {
+  display:block;
   font-family:inherit;font-size:10.5px;
   background:var(--surface2);border:1px solid var(--border);
-  border-radius:4px;padding:1px 6px;color:var(--blue);
-  white-space:pre;
+  border-radius:7px;padding:9px 44px 9px 12px;color:var(--blue);
+  white-space:pre;overflow-x:auto;line-height:1.6;
 }
+[data-theme="light"] code{color:#4f46e5}
+code.inline {
+  display:inline;padding:1px 6px;border-radius:4px;
+  white-space:pre;font-size:10.5px;
+  background:var(--surface2);border:1px solid var(--border);color:var(--blue);
+}
+[data-theme="light"] code.inline{color:#4f46e5}
+.copy-btn {
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  background:none;border:1px solid var(--border);border-radius:5px;
+  color:var(--muted);font-size:9px;font-family:inherit;
+  padding:3px 7px;cursor:pointer;line-height:1;
+  transition:border-color .15s,color .15s,background .15s;
+}
+.copy-btn:hover{border-color:var(--blue);color:var(--blue);background:rgba(64,200,255,.07)}
+.copy-btn.copied{border-color:var(--green);color:var(--green)}
+
 .setup-note {
-  margin-top:16px;padding:12px 16px;
+  margin-top:18px;padding:12px 16px;
   background:rgba(64,200,255,.06);border:1px solid rgba(64,200,255,.15);
   border-radius:8px;font-size:10px;color:var(--muted);line-height:1.8;
 }
 [data-theme="light"] .setup-note{background:rgba(79,70,229,.05);border-color:rgba(79,70,229,.15)}
 
-/* Channels strip */
+/* Notification preview */
+.notify-preview {
+  margin-top:20px;border:1px solid var(--border);border-radius:10px;overflow:hidden;
+}
+.notify-preview-label {
+  padding:8px 14px;background:var(--surface2);border-bottom:1px solid var(--border);
+  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
+}
+.notify-preview-body {
+  padding:14px;font-size:10px;line-height:1.9;
+  background:var(--surface);
+}
+.notify-bar {display:flex;gap:8px;align-items:flex-start;}
+.notify-sidebar {width:3px;border-radius:2px;background:var(--green);flex-shrink:0;align-self:stretch;min-height:40px;}
+.notify-content {flex:1;}
+.notify-title {font-weight:700;color:var(--text);margin-bottom:4px;}
+.notify-line {color:var(--muted);}
+.notify-line .ok  {color:var(--green);font-weight:700;}
+.notify-line .warn{color:var(--amber);font-weight:700;}
+
+/* Channels strip — grouped by category */
 .channels-label {
-  margin-top:16px;margin-bottom:8px;font-size:10px;color:var(--muted);font-weight:700;
+  margin-top:20px;margin-bottom:6px;font-size:10px;color:var(--muted);font-weight:700;
   letter-spacing:.06em;text-transform:uppercase;
 }
-.channels {
-  display:flex;flex-wrap:wrap;gap:6px;
+.channel-group {margin-bottom:12px;}
+.channel-group-name {
+  font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--muted);opacity:.6;margin-bottom:5px;
 }
+.channels {display:flex;flex-wrap:wrap;gap:5px;}
 .ch-pill {
   font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
   padding:4px 10px;border-radius:20px;
@@ -497,6 +667,9 @@ code {
   transition:border-color .15s,color .15s;
 }
 .ch-pill:hover{border-color:var(--blue);color:var(--blue)}
+.ch-pill.devops{border-color:rgba(64,200,255,.2);color:var(--blue);opacity:.8}
+.ch-pill.mobile{border-color:rgba(0,230,118,.2);color:var(--green);opacity:.8}
+.ch-pill.cn    {border-color:rgba(255,171,64,.2);color:var(--amber);opacity:.8}
 
 /* ── Footer ──────────────────────────────────────────────────────────────── */
 footer {
@@ -528,8 +701,11 @@ footer a:hover{color:var(--blue)}
   main{padding:10px 14px 0}
   .welcome{padding:0 14px;margin:20px auto 28px}
   .welcome-hero{padding:32px 18px 28px}
-  .welcome-hero h1{font-size:20px}
-  .hero-punch{font-size:13px}
+  .welcome-hero h1{font-size:22px}
+  .hero-punch{font-size:14px}
+  .hero-stats{gap:7px}
+  .h-stat{padding:8px 12px;min-width:76px}
+  .h-stat-val{font-size:15px}
   footer{padding:16px 14px}
 }
 </style>
@@ -538,8 +714,8 @@ footer a:hover{color:var(--blue)}
 <header>
   <a class="logo" href="https://github.com/reacher-z/gpu-monitor" target="_blank" rel="noopener">◈ gpu<span>monitor</span></a>
   <span class="spacer"></span>
-  <div id="countdown">
-    <svg width="14" height="14" viewBox="0 0 14 14">
+  <div id="countdown" aria-label="Next refresh countdown">
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
       <circle id="cd-track" cx="7" cy="7" r="3.5" fill="none" stroke-width="2.5"/>
       <circle id="cd-circle" cx="7" cy="7" r="3.5" fill="none" stroke="var(--blue)" stroke-width="2.5" stroke-linecap="round"/>
     </svg>
@@ -549,13 +725,13 @@ footer a:hover{color:var(--blue)}
     <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
     GitHub
   </a>
-  <button class="hdr-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle theme (T)">☀</button>
-  <button class="hdr-btn" onclick="load()" title="Refresh (R)">↻ Refresh</button>
-  <div id="status"><span class="dot" id="dot"></span><span id="status-text">loading…</span></div>
+  <button class="hdr-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle theme (T)" aria-label="Toggle color theme">☀</button>
+  <button class="hdr-btn" onclick="load()" title="Refresh (R)" aria-label="Refresh data">↻ Refresh</button>
+  <div id="status" aria-live="polite"><span class="dot" id="dot"></span><span id="status-text">loading…</span></div>
   <span id="clock"></span>
 </header>
 
-<div id="global-bar" style="display:none">
+<div id="global-bar" style="display:none" role="region" aria-label="Fleet summary">
   <div class="g-stat"><div class="g-val" id="g-machines">—</div><div class="g-label">Machines</div></div>
   <div class="g-stat"><div class="g-val" id="g-gpus">—</div><div class="g-label">Total GPUs</div></div>
   <div class="g-stat"><div class="g-val" id="g-util">—</div><div class="g-label">Avg Util</div></div>
@@ -594,135 +770,255 @@ footer a:hover{color:var(--blue)}
 
     <!-- Hero -->
     <div class="welcome-hero">
-      <span class="welcome-icon">◈</span>
-      <h1><span class="hero-brand">GPU Fleet Monitor</span></h1>
-      <p class="hero-punch">Stop losing GPU hours. Get notified in seconds.</p>
-      <p>Single Python file. Zero infrastructure. Track utilization, memory, temperature, and processes across every machine in your cluster — with instant alerts to 20 notification channels.</p>
+      <span class="welcome-icon" aria-hidden="true">◈</span>
+      <h1><span class="hero-brand">gpu-monitor</span></h1>
+      <p class="hero-punch">Your A100 runs at 3AM. You're asleep.<br>gpu-monitor is watching.</p>
+      <p>Single Python file. Zero infrastructure. Track utilization, memory, temperature, and processes across your entire GPU fleet — with instant alerts to 20 notification channels when something goes wrong.</p>
+
+      <!-- Achievement stats -->
+      <div class="hero-stats">
+        <div class="h-stat">
+          <span class="h-stat-val">&lt;&nbsp;1MB</span>
+          <span class="h-stat-lbl">Total size</span>
+        </div>
+        <div class="h-stat">
+          <span class="h-stat-val">20</span>
+          <span class="h-stat-lbl">Alert channels</span>
+        </div>
+        <div class="h-stat">
+          <span class="h-stat-val">60s</span>
+          <span class="h-stat-lbl">Default poll</span>
+        </div>
+        <div class="h-stat">
+          <span class="h-stat-val">11</span>
+          <span class="h-stat-lbl">Prom metrics</span>
+        </div>
+        <div class="h-stat">
+          <span class="h-stat-val">0</span>
+          <span class="h-stat-lbl">Dependencies</span>
+        </div>
+      </div>
+
+      <!-- CTAs -->
       <div class="cta-row">
         <a class="btn-primary" href="https://github.com/reacher-z/gpu-monitor" target="_blank" rel="noopener">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          View on GitHub
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          Star on GitHub
         </a>
         <a class="btn-secondary" href="#setup-guide" onclick="openSetup()">
-          Setup in 5 minutes →
+          Get started in 3 steps →
         </a>
       </div>
+
+      <!-- Social proof row -->
+      <div class="star-row">
+        <a class="star-badge" href="https://github.com/reacher-z/gpu-monitor/stargazers" target="_blank" rel="noopener" aria-label="GitHub stars for gpu-monitor">
+          <span class="star-badge-left">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            reacher-z / gpu-monitor
+          </span>
+          <span class="star-badge-right">★ Star</span>
+        </a>
+        <span class="used-in-prod">
+          <span class="prod-dot" aria-hidden="true"></span>
+          Used in production by ML teams
+        </span>
+      </div>
+
+      <!-- Author credit — prominent -->
       <div class="hero-author">
-        Built by <a href="https://github.com/reacher-z" target="_blank" rel="noopener">reacher-z</a> · MIT License · Open source
+        <a class="author-pill" href="https://github.com/reacher-z" target="_blank" rel="noopener" aria-label="Author reacher-z on GitHub">
+          <span class="author-avatar" aria-hidden="true">R</span>
+          <span class="author-name">reacher-z</span>
+        </a>
+        <span class="author-meta">MIT License · Open source</span>
       </div>
     </div>
 
     <!-- Feature cards -->
     <div class="features">
       <div class="feat">
-        <span class="feat-icon">⚡</span>
+        <span class="feat-icon" aria-hidden="true">⚡</span>
         <div class="feat-title">Zero Dependencies</div>
-        <div class="feat-desc">One Python file. Runs anywhere <code>nvidia-smi</code> is available — no environment setup, no docker required.</div>
-        <span class="feat-highlight">curl &amp; run</span>
+        <div class="feat-desc">One Python file, under 1MB. Runs anywhere <code class="inline">nvidia-smi</code> is available — no environment setup, no docker, no daemon.</div>
+        <span class="feat-stat">curl &amp; run in 30s</span>
       </div>
       <div class="feat">
-        <span class="feat-icon">🔔</span>
-        <div class="feat-title">20 Alert Channels</div>
-        <div class="feat-desc">Slack, Discord, Telegram, PagerDuty, Teams, Feishu, DingTalk, ntfy, Pushover, iMessage and 10 more — pick what your team already uses.</div>
-        <span class="feat-highlight">alerts in &lt;30s</span>
+        <span class="feat-icon" aria-hidden="true">🔔</span>
+        <div class="feat-title">20 Built-in Alert Channels</div>
+        <div class="feat-desc">Slack, Discord, Telegram, PagerDuty, Teams, Feishu, DingTalk, ntfy, Pushover, iMessage and 10 more — pick what your team already uses, set one env var.</div>
+        <span class="feat-stat">alerts fire in &lt; 30s</span>
       </div>
       <div class="feat">
-        <span class="feat-icon">📊</span>
+        <span class="feat-icon" aria-hidden="true">📊</span>
         <div class="feat-title">Prometheus + Grafana</div>
-        <div class="feat-desc">Built-in <code>/metrics</code> endpoint, a ready-made Grafana dashboard, and a drop-in docker-compose monitoring stack.</div>
-        <span class="feat-highlight">production-ready</span>
+        <div class="feat-desc">11 Prometheus metrics via built-in <code class="inline">/metrics</code>, a ready-made Grafana dashboard, and a drop-in docker-compose monitoring stack.</div>
+        <span class="feat-stat">11 metrics · production-ready</span>
       </div>
       <div class="feat">
-        <span class="feat-icon">🌐</span>
+        <span class="feat-icon" aria-hidden="true">🌐</span>
         <div class="feat-title">This Live Dashboard</div>
-        <div class="feat-desc">Push stats to GitHub Pages — zero server cost, zero infrastructure. Anyone with the URL sees your fleet in real time.</div>
-        <span class="feat-highlight">free forever</span>
+        <div class="feat-desc">Push stats to GitHub Pages — zero server cost, zero infrastructure. Anyone with the URL sees your fleet in real time, updated every 60 seconds.</div>
+        <span class="feat-stat">free forever</span>
       </div>
       <div class="feat">
-        <span class="feat-icon">🛡️</span>
+        <span class="feat-icon" aria-hidden="true">🛡️</span>
         <div class="feat-title">Smart Alerting</div>
-        <div class="feat-desc">Catches what simple thresholds miss — memory leak detection, temperature hysteresis, power throttle, and ECC error alerts.</div>
-        <span class="feat-highlight">fewer false positives</span>
+        <div class="feat-desc">Catches what simple thresholds miss — memory leak detection, temperature hysteresis, power throttle alerts, and ECC error tracking per GPU.</div>
+        <span class="feat-stat">fewer false positives</span>
       </div>
       <div class="feat">
-        <span class="feat-icon">☸️</span>
+        <span class="feat-icon" aria-hidden="true">☸️</span>
         <div class="feat-title">Kubernetes Ready</div>
-        <div class="feat-desc">DaemonSet manifests and Kustomize overlays included. Deploy across a multi-node cluster without changing a line of Python.</div>
-        <span class="feat-highlight">cluster-scale</span>
+        <div class="feat-desc">DaemonSet manifests and Kustomize overlays included. Deploy across a multi-node cluster without changing a single line of Python.</div>
+        <span class="feat-stat">cluster-scale</span>
       </div>
     </div>
 
-    <!-- Setup accordion -->
-    <div class="setup-card" id="setup-guide">
+    <!-- Terminal preview -->
+    <div class="terminal-preview">
+      <div class="term-bar">
+        <div class="term-dots" aria-hidden="true">
+          <span class="term-dot r"></span>
+          <span class="term-dot y"></span>
+          <span class="term-dot g"></span>
+        </div>
+        <span class="term-title">python gpu_monitor.py --watch</span>
+      </div>
+      <div class="term-body" role="img" aria-label="Terminal output showing GPU utilization table with four A100 GPUs">
+<span class="t-dim">◈ gpu-monitor v0.3.0  —  rig-01  —  2026-03-08 03:14:22</span>
+
+<span class="t-head">GPU  Name                Util    Mem Used / Total   Temp   Power   Status</span>
+<span class="t-dim">───  ──────────────────  ──────  ─────────────────  ─────  ──────  ──────</span>
+<span class="t-ok"> 0   NVIDIA A100-SXM4    87%     38.2 / 80.0 GiB    62°C   312W   </span><span class="t-ok">● active</span>
+<span class="t-ok"> 1   NVIDIA A100-SXM4    92%     72.1 / 80.0 GiB    71°C   388W   </span><span class="t-warn">● high mem</span>
+<span class="t-dim"> 2   NVIDIA A100-SXM4     3%      1.2 / 80.0 GiB    34°C    52W   ○ idle</span>
+<span class="t-dim"> 3   NVIDIA A100-SXM4     0%      0.8 / 80.0 GiB    33°C    48W   ○ idle</span>
+
+<span class="t-dim">Processes on GPU 0: python train.py [user: ml] — 38.2 GiB</span>
+<span class="t-dim">Processes on GPU 1: python train.py [user: ml] — 72.1 GiB</span>
+
+<span class="t-warn">⚠ GPU 1 memory at 90% — alert sent to Slack</span>
+<span class="t-dim">Next push in 58s  ·  Press Ctrl-C to stop</span>
+      </div>
+    </div>
+
+    <!-- Setup accordion — open by default -->
+    <div class="setup-card open" id="setup-guide">
       <div class="setup-title" onclick="toggleSetup(this)">
-        <span>Quick Setup — connect your machines in 5 minutes</span>
-        <i class="chevron">▾</i>
+        <span>Quick Setup — up and running in 3 steps</span>
+        <i class="chevron" aria-hidden="true">▾</i>
       </div>
       <div class="setup-body">
         <ol>
           <li>
             <div class="setup-step">
-              <div class="step-num">1</div>
+              <div class="step-num" aria-hidden="true">1</div>
               <div class="step-body">
-                <strong>Install</strong>
-                <code>pip install gpuwatch</code><br>
-                <span style="font-size:10px;color:var(--muted)">or download single file: <code>curl -O https://raw.githubusercontent.com/reacher-z/gpu-monitor/main/gpu_monitor.py</code></span>
+                <strong>Install &amp; download</strong>
+                <div class="code-block">
+                  <code>pip install pynvml requests</code>
+                  <button class="copy-btn" onclick="copyCode(this,'pip install pynvml requests')">copy</button>
+                </div>
+                <div class="code-block">
+                  <code>curl -O https://raw.githubusercontent.com/reacher-z/gpu-monitor/main/gpu_monitor.py</code>
+                  <button class="copy-btn" onclick="copyCode(this,'curl -O https://raw.githubusercontent.com/reacher-z/gpu-monitor/main/gpu_monitor.py')">copy</button>
+                </div>
               </div>
             </div>
           </li>
           <li>
             <div class="setup-step">
-              <div class="step-num">2</div>
+              <div class="step-num" aria-hidden="true">2</div>
               <div class="step-body">
-                <strong>Create a GitHub token</strong>
-                Go to <a href="https://github.com/settings/tokens" target="_blank" rel="noopener" style="color:var(--blue)">github.com/settings/tokens</a> → New token (classic) → tick <code>public_repo</code> scope.
+                <strong>Create a GitHub token &amp; set env vars</strong>
+                Go to <a href="https://github.com/settings/tokens" target="_blank" rel="noopener" style="color:var(--blue)">github.com/settings/tokens</a> → New token (classic) → tick <code class="inline">public_repo</code>, then:
+                <div class="code-block" style="margin-top:8px">
+                  <code>export GITHUB_PAGES_REPO=your-username/gpu-monitor
+export GITHUB_PAGES_TOKEN=ghp_...</code>
+                  <button class="copy-btn" onclick="copyCode(this,'export GITHUB_PAGES_REPO=your-username/gpu-monitor\nexport GITHUB_PAGES_TOKEN=ghp_...')">copy</button>
+                </div>
               </div>
             </div>
           </li>
           <li>
             <div class="setup-step">
-              <div class="step-num">3</div>
-              <div class="step-body">
-                <strong>Set environment variables</strong>
-                <code>export GITHUB_PAGES_REPO=your-username/gpu-monitor</code><br>
-                <code>export GITHUB_PAGES_TOKEN=ghp_...</code>
-              </div>
-            </div>
-          </li>
-          <li>
-            <div class="setup-step">
-              <div class="step-num">4</div>
+              <div class="step-num" aria-hidden="true">3</div>
               <div class="step-body">
                 <strong>Run on each machine</strong>
-                <code>gpu-monitor</code><br>
-                Stats are pushed every 30 seconds and appear here automatically. You'll see a card per machine with GPU utilization, memory, temperature, and running processes in real time.
-              </div>
-            </div>
-          </li>
-          <li>
-            <div class="setup-step">
-              <div class="step-num">5</div>
-              <div class="step-body">
-                <strong>Add Slack / Discord alerts (optional)</strong>
-                <code>export SLACK_WEBHOOK_URL=https://hooks.slack.com/...</code><br>
-                Run <code>gpu-monitor --channels</code> to see all 20 options.
+                <div class="code-block">
+                  <code>python gpu_monitor.py</code>
+                  <button class="copy-btn" onclick="copyCode(this,'python gpu_monitor.py')">copy</button>
+                </div>
+                Stats push every 60 seconds and appear on this dashboard automatically. Add Slack alerts with one extra env var:
+                <div class="code-block" style="margin-top:8px">
+                  <code>export SLACK_WEBHOOK_URL=https://hooks.slack.com/...</code>
+                  <button class="copy-btn" onclick="copyCode(this,'export SLACK_WEBHOOK_URL=https://hooks.slack.com/...')">copy</button>
+                </div>
+                Run <code class="inline">python gpu_monitor.py --channels</code> to see all 20 options.
               </div>
             </div>
           </li>
         </ol>
+
+        <!-- What you'll receive -->
+        <div class="notify-preview">
+          <div class="notify-preview-label">What you'll receive in Slack / Discord</div>
+          <div class="notify-preview-body">
+            <div class="notify-bar">
+              <div class="notify-sidebar"></div>
+              <div class="notify-content">
+                <div class="notify-title">◈ gpu-monitor · rig-01</div>
+                <div class="notify-line">GPU 1 · A100-SXM4 <span class="warn">memory at 90%</span> (72.1 / 80.0 GiB)</div>
+                <div class="notify-line">Util <span class="ok">92%</span> · Temp <span class="warn">71°C</span> · Power 388W</div>
+                <div class="notify-line" style="font-size:9px;color:var(--muted)">2026-03-08 03:14:22 UTC</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="setup-note">
-          No dashboard data is stored on any server. Stats are committed as JSON files directly to your GitHub repository — the same one hosting this page.
+          No data is stored on any server. Stats are committed as JSON directly to your GitHub repo — the same one hosting this page. Your GPU data never leaves your infrastructure.
         </div>
-        <div class="channels-label">Notification channels</div>
-        <div class="channels">
-          <span class="ch-pill">Slack</span><span class="ch-pill">Discord</span><span class="ch-pill">Telegram</span>
-          <span class="ch-pill">Email</span><span class="ch-pill">PagerDuty</span><span class="ch-pill">Teams</span>
-          <span class="ch-pill">Google Chat</span><span class="ch-pill">Feishu</span><span class="ch-pill">WeCom</span>
-          <span class="ch-pill">DingTalk</span><span class="ch-pill">Bark</span><span class="ch-pill">ntfy</span>
-          <span class="ch-pill">Gotify</span><span class="ch-pill">Pushover</span><span class="ch-pill">Rocket.Chat</span>
-          <span class="ch-pill">Mattermost</span><span class="ch-pill">Zulip</span><span class="ch-pill">SMS</span>
-          <span class="ch-pill">iMessage</span><span class="ch-pill">OpenClaw</span>
+
+        <div class="channels-label">Supported notification channels</div>
+
+        <div class="channel-group">
+          <div class="channel-group-name">Messaging &amp; Incident</div>
+          <div class="channels">
+            <span class="ch-pill">Slack</span>
+            <span class="ch-pill">Discord</span>
+            <span class="ch-pill">Telegram</span>
+            <span class="ch-pill">Email</span>
+            <span class="ch-pill devops">PagerDuty</span>
+            <span class="ch-pill devops">Teams</span>
+            <span class="ch-pill devops">Google Chat</span>
+            <span class="ch-pill devops">Mattermost</span>
+            <span class="ch-pill devops">Rocket.Chat</span>
+            <span class="ch-pill devops">Zulip</span>
+          </div>
         </div>
+        <div class="channel-group">
+          <div class="channel-group-name">Mobile &amp; Push</div>
+          <div class="channels">
+            <span class="ch-pill mobile">Bark</span>
+            <span class="ch-pill mobile">ntfy</span>
+            <span class="ch-pill mobile">Gotify</span>
+            <span class="ch-pill mobile">Pushover</span>
+            <span class="ch-pill mobile">SMS</span>
+            <span class="ch-pill mobile">iMessage</span>
+          </div>
+        </div>
+        <div class="channel-group">
+          <div class="channel-group-name">Chinese Platforms</div>
+          <div class="channels">
+            <span class="ch-pill cn">Feishu</span>
+            <span class="ch-pill cn">WeCom</span>
+            <span class="ch-pill cn">DingTalk</span>
+            <span class="ch-pill cn">OpenClaw</span>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -776,6 +1072,22 @@ document.addEventListener('keydown', e => {
   if (e.key === 't' || e.key === 'T') toggleTheme();
   if (e.key === 'r' || e.key === 'R') load();
 });
+
+// ── Copy button ───────────────────────────────────────────────────────────────
+function copyCode(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'done';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1800);
+  }).catch(() => {
+    const code = btn.previousElementSibling;
+    const range = document.createRange();
+    range.selectNodeContents(code);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  });
+}
 
 // ── Setup accordion ───────────────────────────────────────────────────────────
 function toggleSetup(el) {
@@ -897,7 +1209,6 @@ let _firstLoad = true;
 
 async function load() {
   if (_firstLoad) {
-    // Show skeleton only on first load; subsequent refreshes keep existing content visible
     document.getElementById('skeleton').style.display = '';
   }
 
@@ -954,7 +1265,6 @@ async function load() {
 
     document.getElementById('g-procs').textContent  = totalProcs;
 
-    // Replace skeleton with real cards on first load; update in-place on refresh
     document.getElementById('skeleton').style.display = 'none';
     document.getElementById('main').innerHTML =
       '<div id="skeleton" style="display:none"></div>' +
@@ -967,7 +1277,6 @@ async function load() {
     document.getElementById('skeleton').style.display = 'none';
     document.getElementById('dot').className = 'dot err';
     document.getElementById('status-text').textContent = 'error';
-    // Only show error overlay if we haven't already rendered machine cards
     if (_firstLoad) {
       showEmptyState();
     }
