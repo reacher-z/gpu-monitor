@@ -1,0 +1,42 @@
+services:
+  gpu-monitor:
+    build: .
+    restart: unless-stopped
+    runtime: nvidia          # requires NVIDIA Container Toolkit
+    environment:
+      # Configure one or more notification channels — see .env.example
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - NTFY_URL=${NTFY_URL:-}
+      - NTFY_TOKEN=${NTFY_TOKEN:-}
+      - GOTIFY_URL=${GOTIFY_URL:-}
+      - GOTIFY_TOKEN=${GOTIFY_TOKEN:-}
+      - PUSHOVER_TOKEN=${PUSHOVER_TOKEN:-}
+      - PUSHOVER_USER=${PUSHOVER_USER:-}
+      - TEAMS_WEBHOOK_URL=${TEAMS_WEBHOOK_URL:-}
+      - MATTERMOST_WEBHOOK_URL=${MATTERMOST_WEBHOOK_URL:-}
+      - GOOGLE_CHAT_WEBHOOK_URL=${GOOGLE_CHAT_WEBHOOK_URL:-}
+      - ZULIP_SITE=${ZULIP_SITE:-}
+      - ZULIP_EMAIL=${ZULIP_EMAIL:-}
+      - ZULIP_API_KEY=${ZULIP_API_KEY:-}
+      - WECOM_WEBHOOK_URL=${WECOM_WEBHOOK_URL:-}
+      - FEISHU_WEBHOOK_URL=${FEISHU_WEBHOOK_URL:-}
+      - DINGTALK_WEBHOOK_URL=${DINGTALK_WEBHOOK_URL:-}
+      - BARK_URL=${BARK_URL:-}
+      - OPENCLAW_WEBHOOK_URL=${OPENCLAW_WEBHOOK_URL:-}
+      - OPENCLAW_WEBHOOK_SECRET=${OPENCLAW_WEBHOOK_SECRET:-}
+      - CHECK_INTERVAL=${CHECK_INTERVAL:-60}
+      - IDLE_THRESHOLD=${IDLE_THRESHOLD:-10}
+      - IDLE_MINUTES=${IDLE_MINUTES:-5}
+      - ALERT_COOLDOWN=${ALERT_COOLDOWN:-30}
+      - WEB_PORT=${WEB_PORT:-0}
+      - LOG_FILE=/var/log/gpu-monitor.log
+    volumes:
+      - gpu-monitor-logs:/var/log
+    ports:
+      - "${WEB_PORT:-8080}:${WEB_PORT:-8080}"
+
+volumes:
+  gpu-monitor-logs:
