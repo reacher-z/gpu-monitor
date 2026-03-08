@@ -4,7 +4,8 @@ Lightweight GPU Monitor with multi-channel notifications and web dashboard.
 
 Supported notification channels (configure via environment variables):
   Slack, Discord, Telegram, Email (SMTP), SMS (Twilio), iMessage (macOS only),
-  WeCom (企业微信), Feishu (飞书), DingTalk (钉钉), Bark (iOS push)
+  WeCom (企业微信), Feishu (飞书), DingTalk (钉钉), Bark (iOS push),
+  OpenClaw (routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, etc.)
 
 Web dashboard:
   Set WEB_PORT=8080 (or any port) to enable the real-time GPU dashboard.
@@ -89,6 +90,8 @@ WECOM_WEBHOOK_URL    = os.environ.get("WECOM_WEBHOOK_URL",    "")  # 企业微�
 FEISHU_WEBHOOK_URL   = os.environ.get("FEISHU_WEBHOOK_URL",   "")  # 飞书
 DINGTALK_WEBHOOK_URL = os.environ.get("DINGTALK_WEBHOOK_URL", "")  # 钉钉
 BARK_URL             = os.environ.get("BARK_URL",             "")  # e.g. https://api.day.app/YOUR_KEY
+OPENCLAW_WEBHOOK_URL    = os.environ.get("OPENCLAW_WEBHOOK_URL",    "")  # e.g. http://localhost:18789/hooks/wake
+OPENCLAW_WEBHOOK_SECRET = os.environ.get("OPENCLAW_WEBHOOK_SECRET", "")  # Bearer token for auth
 
 # GitHub Pages dashboard (optional)
 GITHUB_PAGES_TOKEN = os.environ.get("GITHUB_PAGES_TOKEN", "")
@@ -465,6 +468,32 @@ def send_bark(plain_text: str) -> bool:
         return False
 
 
+def send_openclaw(plain_text: str) -> bool:
+    """Send via OpenClaw webhook (https://openclaw.ai).
+
+    OpenClaw is a self-hosted AI assistant that routes messages to whichever
+    chat channel the user configured: WhatsApp, Telegram, Slack, Discord,
+    Teams, Signal, iMessage, LINE, Mattermost, Matrix, Zalo, and more.
+    """
+    if not OPENCLAW_WEBHOOK_URL:
+        return False
+    headers = {"Content-Type": "application/json"}
+    if OPENCLAW_WEBHOOK_SECRET:
+        headers["Authorization"] = f"Bearer {OPENCLAW_WEBHOOK_SECRET}"
+    try:
+        req = urllib.request.Request(
+            OPENCLAW_WEBHOOK_URL,
+            data=json.dumps({"text": plain_text, "mode": "now"}).encode(),
+            headers=headers,
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.status in (200, 204)
+    except Exception as e:
+        logger.error(f"OpenClaw error: {e}")
+        return False
+
+
 def notify(slack_text: str, color: str = "") -> None:
     """Dispatch to all configured notification channels in a background thread."""
     def _dispatch() -> None:
@@ -480,6 +509,7 @@ def notify(slack_text: str, color: str = "") -> None:
             send_feishu(plain)
             send_dingtalk(plain)
             send_bark(plain)
+            send_openclaw(plain)
         except Exception as e:
             logger.error(f"notify dispatch error: {e}")
     threading.Thread(target=_dispatch, daemon=True).start()

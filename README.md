@@ -32,6 +32,7 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 | **Feishu (飞书)** | Webhook URL |
 | **DingTalk (钉钉)** | Webhook URL |
 | **Bark** | Bark server URL (self-hosted or api.day.app) |
+| **OpenClaw** | Webhook URL + secret — routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, and [20+ more](https://openclaw.ai) |
 
 Configure one or more — only channels with credentials set will be used.
 
@@ -147,6 +148,13 @@ bash start.sh status    # check if running
 |----------|-------------|
 | `BARK_URL` | Bark server URL, e.g. `https://api.day.app/YOUR_KEY` |
 
+### OpenClaw
+
+| Variable | Description |
+|----------|-------------|
+| `OPENCLAW_WEBHOOK_URL` | Your OpenClaw webhook URL, e.g. `http://your-host:18789/hooks/wake` |
+| `OPENCLAW_WEBHOOK_SECRET` | Bearer token (from OpenClaw settings), if auth is enabled |
+
 ## Prometheus Metrics
 
 When `WEB_PORT` is set, a `/metrics` endpoint is available for Prometheus scraping:
@@ -223,3 +231,19 @@ Deploy to each machine — each gets an auto-assigned color in Slack/Discord and
 ### Bark (iOS)
 1. Install [Bark](https://github.com/Finb/Bark) from the App Store
 2. Copy your device URL → `BARK_URL` (e.g. `https://api.day.app/YOUR_DEVICE_KEY`)
+
+## Setting Up OpenClaw
+
+[OpenClaw](https://openclaw.ai) is a self-hosted AI assistant. Once running, its webhook turns it into a notification router for 20+ chat platforms — WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, Nostr, Twitch, and more.
+
+1. Install and start OpenClaw on any machine (see [openclaw.ai](https://openclaw.ai))
+2. In OpenClaw settings, enable the webhook gateway and copy the URL (default: `http://localhost:18789/hooks/wake`)
+3. Set a webhook secret if auth is enabled:
+
+```bash
+export OPENCLAW_WEBHOOK_URL="http://your-openclaw-host:18789/hooks/wake"
+export OPENCLAW_WEBHOOK_SECRET="your-bearer-token"  # optional, if auth enabled
+python gpu_monitor.py
+```
+
+GPU alerts will be delivered to whichever chat channels you configured in OpenClaw.
