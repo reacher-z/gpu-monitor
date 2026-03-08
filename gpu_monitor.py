@@ -133,6 +133,10 @@ PAGERDUTY_INTEGRATION_KEY = os.environ.get("PAGERDUTY_INTEGRATION_KEY", "")  # 3
 # Datadog DogStatsD — send GPU metrics to Datadog agent
 DATADOG_STATSD_HOST = os.environ.get("DATADOG_STATSD_HOST", "")  # e.g. localhost or datadog-agent
 DATADOG_STATSD_PORT = int(os.environ.get("DATADOG_STATSD_PORT", "8125"))
+# OpenTelemetry OTLP HTTP — send metrics to any OTel-compatible backend
+OTEL_EXPORTER_OTLP_ENDPOINT = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "")  # e.g. http://otel-collector:4318
+OTEL_SERVICE_NAME            = os.environ.get("OTEL_SERVICE_NAME",            "gpu-monitor")
+OTEL_EXPORTER_OTLP_HEADERS   = os.environ.get("OTEL_EXPORTER_OTLP_HEADERS",  "")  # "key=val,key2=val2"
 
 # GitHub Pages dashboard (optional)
 GITHUB_PAGES_TOKEN = os.environ.get("GITHUB_PAGES_TOKEN", "")
@@ -768,6 +772,64 @@ def send_openclaw(plain_text: str) -> bool:
     except Exception as e:
         logger.error(f"OpenClaw error: {e}")
         return False
+
+
+def push_otlp(gpus: list[dict]) -> None:
+    """Send GPU metrics to any OpenTelemetry-compatible backend via OTLP HTTP/JSON."""
+    if not OTEL_EXPORTER_OTLP_ENDPOINT:
+        return
+    try:
+        ts_ns = str(int(time.time() * 1e9))
+        resource_attrs = [
+            {"key": "host.name",    "value": {"stringValue": HOSTNAME}},
+            {"key": "service.name", "value": {"stringValue": OTEL_SERVICE_NAME}},
+        ]
+
+        def _dp(gpu_idx: int, val: float, extra: list | None = None) -> dict:
+            attrs = [{"key": "gpu", "value": {"intValue": gpu_idx}}]
+            if extra:
+                attrs.extend(extra)
+            return {"attributes": attrs, "timeUnixNano": ts_ns, "asDouble": float(val)}
+
+        metrics_out: list[dict] = []
+        for name, unit, extractor in [
+            ("gpu.utilization",        "1",   lambda g: g["util"]),
+            ("gpu.memory.used_mib",    "MiBy", lambda g: g["mem_used"]),
+            ("gpu.memory.total_mib",   "MiBy", lambda g: g["mem_total"]),
+            ("gpu.memory.utilization", "1",   lambda g: round(g["mem_used"]/g["mem_total"]*100,1) if g["mem_total"] else 0),
+            ("gpu.temperature",        "Cel", lambda g: g["temp"]),
+        ]:
+            dps = [_dp(g["idx"], extractor(g)) for g in gpus]
+            if dps:
+                metrics_out.append({"name": name, "unit": unit, "gauge": {"dataPoints": dps}})
+
+        for name, unit, key in [
+            ("gpu.power_w",       "W",   "power_w"),
+            ("gpu.power_limit_w", "W",   "power_limit_w"),
+            ("gpu.fan_speed",     "1",   "fan_speed"),
+            ("gpu.clock_mhz",     "MHz", "clock_mhz"),
+            ("gpu.ecc_errors",    "1",   "ecc_errors"),
+        ]:
+            dps = [_dp(g["idx"], g[key]) for g in gpus if g.get(key) is not None]
+            if dps:
+                metrics_out.append({"name": name, "unit": unit, "gauge": {"dataPoints": dps}})
+
+        payload = {"resourceMetrics": [{"resource": {"attributes": resource_attrs},
+            "scopeMetrics": [{"scope": {"name": "gpu-monitor", "version": __version__},
+                "metrics": metrics_out}]}]}
+
+        url = OTEL_EXPORTER_OTLP_ENDPOINT.rstrip("/") + "/v1/metrics"
+        body = json.dumps(payload).encode()
+        headers = {"Content-Type": "application/json"}
+        for pair in (p.strip() for p in OTEL_EXPORTER_OTLP_HEADERS.split(",") if "=" in p):
+            k, _, v = pair.partition("=")
+            headers[k.strip()] = v.strip()
+        req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status not in (200, 204):
+                logger.warning(f"OTLP export returned {resp.status}")
+    except Exception as e:
+        logger.warning(f"OTLP export failed: {e}")
 
 
 def send_pagerduty(plain_text: str) -> bool:
@@ -1548,6 +1610,9 @@ def monitor():
 
         # Push to Datadog via DogStatsD
         push_datadog(gpus)
+
+        # Push to OpenTelemetry backend via OTLP HTTP
+        push_otlp(gpus)
 
         # Update web dashboard sparkline history
         for g in gpus:

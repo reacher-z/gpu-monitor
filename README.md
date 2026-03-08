@@ -29,6 +29,7 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 - **`ALERT_WEBHOOK_URL`** — POST JSON to any HTTP endpoint on every alert (CI/CD, PagerDuty, custom integrations)
 - **InfluxDB export** — write GPU metrics in line protocol format to InfluxDB v1/v2 (`INFLUXDB_URL`)
 - **Datadog export** — send GPU metrics to Datadog via DogStatsD (`DATADOG_STATSD_HOST`)
+- **OpenTelemetry OTLP** — export metrics to any OTel-compatible backend (`OTEL_EXPORTER_OTLP_ENDPOINT`)
 - **`--watch`** — live color terminal table (like a lite nvtop): `gpu_monitor.py --watch 2`
 - **Web dashboard sparklines** — `--web PORT` now shows utilization history sparklines per GPU card
 - **`--test-notify`** — verify all configured channels with one command
@@ -45,7 +46,7 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 | Zero dependencies | ✅ stdlib only | ❌ | ❌ | ❌ |
 | Single file deploy | ✅ | ❌ | ❌ | ❌ |
 | Prometheus `/metrics` | ✅ 11 metrics | ❌ | ✅ | ❌ |
-| InfluxDB / Datadog export | ✅ | ❌ | ❌ | ❌ |
+| InfluxDB / Datadog / OTLP | ✅ | ❌ | ❌ | ❌ |
 | Crash detection | ✅ | ❌ | ❌ | ❌ |
 | Temperature alerting | ✅ | ❌ | ❌ | ❌ |
 | ECC error detection | ✅ | ❌ | ❌ | ❌ |
@@ -211,6 +212,9 @@ Not configured:           Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTal
 | `INFLUXDB_TOKEN` | — | API token (v2) or `user:password` (v1) |
 | `INFLUXDB_BUCKET` | `gpu_metrics` | InfluxDB v2 bucket or v1 `db/rp` |
 | `INFLUXDB_ORG` | — | InfluxDB v2 organization name |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | — | OTel Collector URL (e.g. `http://otel-collector:4318`) |
+| `OTEL_SERVICE_NAME` | `gpu-monitor` | Service name for OTLP resource attributes |
+| `OTEL_EXPORTER_OTLP_HEADERS` | — | Extra headers as `key=val,key2=val2` (e.g. for auth tokens) |
 
 ### Slack
 

@@ -36,6 +36,7 @@
 - **Prometheus config** (`grafana/prometheus.yml`) — ready-to-use scrape config with alerting rules
 - **Alertmanager config** (`grafana/alertmanager.yml`) — routes Alertmanager alerts back through gpu-monitor webhook to all 19 channels
 - **PagerDuty** — 20th notification channel; Events API v2 via `PAGERDUTY_INTEGRATION_KEY`
+- **OpenTelemetry OTLP HTTP** — `OTEL_EXPORTER_OTLP_ENDPOINT` exports all 11 GPU metrics as OTLP/JSON gauges to any OTel-compatible backend (Grafana, Honeycomb, Lightstep, OTLP Collector, etc.)
 - **Datadog DogStatsD** — `DATADOG_STATSD_HOST`/`DATADOG_STATSD_PORT`; sends all 9 GPU metrics as gauges with gpu/host/gpu_name tags via UDP
 - **`--watch [SECS]`** — live color terminal table refreshing every SECS (default 2); shows util, memory, temperature, power, fan, and processes with ANSI colors
 - **InfluxDB line protocol export** — `INFLUXDB_URL`/`INFLUXDB_TOKEN`/`INFLUXDB_BUCKET`/`INFLUXDB_ORG`; supports both v1 and v2 endpoints; writes all 9 GPU metrics per check
