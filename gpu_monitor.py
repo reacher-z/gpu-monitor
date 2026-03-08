@@ -123,6 +123,11 @@ GPU_TEMP_WARN = int(os.environ.get("GPU_TEMP_WARN", "85"))  # °C — warning al
 GPU_TEMP_CRIT = int(os.environ.get("GPU_TEMP_CRIT", "92"))  # °C — critical alert
 # Generic alert webhook — receives a POST with JSON body for every alert
 ALERT_WEBHOOK_URL = os.environ.get("ALERT_WEBHOOK_URL", "")
+# InfluxDB — write GPU metrics in line protocol format
+INFLUXDB_URL    = os.environ.get("INFLUXDB_URL",    "")  # e.g. http://influxdb:8086
+INFLUXDB_TOKEN  = os.environ.get("INFLUXDB_TOKEN",  "")  # API token (v2) or "user:pass" (v1)
+INFLUXDB_BUCKET = os.environ.get("INFLUXDB_BUCKET", "gpu_metrics")  # v2 bucket or "db/rp"
+INFLUXDB_ORG    = os.environ.get("INFLUXDB_ORG",    "")  # v2 org name
 
 # GitHub Pages dashboard (optional)
 GITHUB_PAGES_TOKEN = os.environ.get("GITHUB_PAGES_TOKEN", "")
@@ -760,6 +765,53 @@ def send_openclaw(plain_text: str) -> bool:
         return False
 
 
+def push_influxdb(gpus: list[dict]) -> None:
+    """Write GPU metrics to InfluxDB in line protocol format (v1 and v2 compatible)."""
+    if not INFLUXDB_URL:
+        return
+    try:
+        ts_ns = int(time.time() * 1e9)
+        h = HOSTNAME.replace(" ", "\\ ")
+        lines = []
+        for g in gpus:
+            name_tag = g["name"].replace(" ", "\\ ").replace(",", "\\,").replace("=", "\\=")
+            tags = f'gpu={g["idx"]},host={h},name={name_tag}'
+            fields: list[str] = [
+                f"utilization={g['util']}",
+                f"mem_used={g['mem_used']}",
+                f"mem_total={g['mem_total']}",
+                f"temperature={g['temp']}",
+            ]
+            if g.get("power_w")      is not None: fields.append(f"power_w={g['power_w']}")
+            if g.get("power_limit_w") is not None: fields.append(f"power_limit_w={g['power_limit_w']}")
+            if g.get("clock_mhz")    is not None: fields.append(f"clock_mhz={g['clock_mhz']}")
+            if g.get("fan_speed")    is not None: fields.append(f"fan_speed={g['fan_speed']}")
+            if g.get("ecc_errors")   is not None: fields.append(f"ecc_errors={g['ecc_errors']}")
+            lines.append(f"gpu_metrics,{tags} {','.join(fields)} {ts_ns}")
+        body = "\n".join(lines).encode()
+
+        # Support both InfluxDB v1 (/write) and v2 (/api/v2/write)
+        if "/api/v2" in INFLUXDB_URL or INFLUXDB_ORG:
+            url = INFLUXDB_URL.rstrip("/") + f"/api/v2/write?bucket={urllib.parse.quote(INFLUXDB_BUCKET)}&org={urllib.parse.quote(INFLUXDB_ORG)}&precision=ns"
+            headers = {"Authorization": f"Token {INFLUXDB_TOKEN}", "Content-Type": "text/plain; charset=utf-8"}
+        else:
+            db, _, rp = INFLUXDB_BUCKET.partition("/")
+            url = INFLUXDB_URL.rstrip("/") + f"/write?db={urllib.parse.quote(db)}" + (f"&rp={urllib.parse.quote(rp)}" if rp else "") + "&precision=ns"
+            headers = {"Content-Type": "text/plain; charset=utf-8"}
+            if INFLUXDB_TOKEN and ":" in INFLUXDB_TOKEN:
+                import base64 as _b64
+                headers["Authorization"] = "Basic " + _b64.b64encode(INFLUXDB_TOKEN.encode()).decode()
+            elif INFLUXDB_TOKEN:
+                headers["Authorization"] = f"Token {INFLUXDB_TOKEN}"
+
+        req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status not in (200, 204):
+                logger.warning(f"InfluxDB write returned {resp.status}")
+    except Exception as e:
+        logger.warning(f"InfluxDB write failed: {e}")
+
+
 def notify(slack_text: str, color: str = "") -> None:
     """Dispatch to all configured notification channels in a background thread."""
     def _dispatch() -> None:
@@ -817,6 +869,11 @@ def _prom_label(s: str) -> str:
 # ---------------------------------------------------------------------------
 # Web dashboard
 # ---------------------------------------------------------------------------
+# Ring buffer for web dashboard sparklines — updated by monitor() on each check
+# {gpu_idx: [[util%, mem%, temp], ...]}  up to _MAX_HISTORY_POINTS entries
+_dashboard_history: dict[int, list] = {}
+_MAX_HISTORY_POINTS = 60  # 60 × CHECK_INTERVAL seconds (default 1 hour)
+
 _DASHBOARD_HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -915,6 +972,10 @@ main{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:
 .sum-item{display:flex;align-items:center;gap:6px;color:var(--muted)}
 .sum-val{font-weight:700;font-size:13px}
 
+/* Sparkline */
+.spark-row{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.spark-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);white-space:nowrap;margin-right:8px}
+
 /* Loading / error */
 .loading,.error{
   grid-column:1/-1;display:flex;align-items:center;justify-content:center;
@@ -951,12 +1012,32 @@ function bar(pct,colorFn){
   return `<div class="track"><div class="fill" style="width:${p}%;background:${colorFn(p)}"></div></div>`;
 }
 
+function sparkline(data,colorFn){
+  if(!data||data.length<2)return'';
+  const vals=data.slice(-40);
+  const W=84,H=22;
+  const pts=vals.map((v,i)=>{
+    const x=(i/(vals.length-1))*W;
+    const y=H-(Math.min(v,100)/100)*H;
+    return x.toFixed(1)+','+y.toFixed(1);
+  }).join(' ');
+  const last=vals[vals.length-1];
+  const col=colorFn(last);
+  const lx=((vals.length-1)/(vals.length-1))*W,ly=H-(Math.min(last,100)/100)*H;
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="overflow:visible;display:block"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="2.5" fill="${col}"/></svg>`;
+}
+
+let _gpuHistory={};
+
 function renderCard(g,procs){
   const mp=g.mem_total?g.mem_used/g.mem_total*100:0;
   const pl=(procs[g.idx]||[]);
   const procsHtml=pl.length
     ?pl.map(p=>`<div class="proc"><span class="proc-name">${esc(p.name)}</span><span class="proc-mem">${p.mem} MiB</span></div>`).join('')
     :'<div class="no-proc">idle</div>';
+  const hist=_gpuHistory[String(g.idx)]||[];
+  const utilHist=hist.map(h=>h[0]);
+  const sparkHtml=utilHist.length>1?`<div class="spark-row"><span class="spark-lbl">Util history (${utilHist.length} pts)</span>${sparkline(utilHist,utilColor)}</div>`:'';
   return `<div class="card">
   <div class="card-header">
     <div class="gpu-name">${esc(g.name)}</div>
@@ -988,11 +1069,19 @@ function renderCard(g,procs){
     <div class="procs-title">Processes</div>
     ${procsHtml}
   </div>
+  ${sparkHtml}
 </div>`;
 }
 
 function esc(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function fetchHistory(){
+  try{
+    const r=await fetch('/api/history',{signal:AbortSignal.timeout(5000)});
+    if(r.ok)_gpuHistory=await r.json();
+  }catch(e){}
 }
 
 async function refresh(){
@@ -1036,7 +1125,9 @@ setInterval(()=>{
 },1000);
 
 setInterval(refresh,2000);
+setInterval(fetchHistory,60000);
 refresh();
+fetchHistory();
 </script>
 </body>
 </html>
@@ -1127,6 +1218,15 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        elif self.path == "/api/history":
+            body = json.dumps({str(k): v for k, v in _dashboard_history.items()}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-cache")
             self.end_headers()
             self.wfile.write(body)
 
@@ -1383,6 +1483,17 @@ def monitor():
         # Push to GitHub Pages (throttled to every 5 min)
         push_stats_to_github(gpus, get_procs())
 
+        # Push to InfluxDB (every check interval)
+        push_influxdb(gpus)
+
+        # Update web dashboard sparkline history
+        for g in gpus:
+            mp = round(g["mem_used"] / g["mem_total"] * 100) if g["mem_total"] else 0
+            hist = _dashboard_history.setdefault(g["idx"], [])
+            hist.append([g["util"], mp, g["temp"]])
+            if len(hist) > _MAX_HISTORY_POINTS:
+                hist.pop(0)
+
         all_idle = all(g["util"] < IDLE_THRESHOLD for g in gpus)
 
         status_interval = STATUS_IDLE if all_idle else STATUS_ACTIVE
@@ -1581,6 +1692,8 @@ def main():
     parser.add_argument("--version",     action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--once",        action="store_true", help="Print status and exit")
     parser.add_argument("--json",        action="store_true", help="Output current GPU stats as JSON and exit")
+    parser.add_argument("--watch",       type=int, metavar="SECS", nargs="?", const=2,
+                        help="Live terminal GPU table, refreshed every SECS (default 2)")
     parser.add_argument("--channels",    action="store_true", help="List configured notification channels and exit")
     parser.add_argument("--test-notify", action="store_true", help="Send a test notification to all configured channels and exit")
     parser.add_argument("--web",  type=int, metavar="PORT", default=0,
@@ -1635,6 +1748,55 @@ def main():
         }
         print(json.dumps(payload, indent=2))
         sys.exit(0)
+
+    if args.watch is not None:
+        interval = max(1, args.watch)
+        _RESET  = "\033[0m"
+        _BOLD   = "\033[1m"
+        _RED    = "\033[91m"
+        _YELLOW = "\033[93m"
+        _GREEN  = "\033[92m"
+        _BLUE   = "\033[94m"
+        _GRAY   = "\033[90m"
+        def _util_color(p):
+            return _RED if p >= 90 else _YELLOW if p >= 40 else _GREEN
+        def _temp_color(t):
+            return _RED if t >= 85 else _YELLOW if t >= 70 else _BLUE
+        try:
+            while True:
+                gpus  = get_gpu_stats()
+                procs = get_gpu_processes()
+                ts    = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                print("\033[2J\033[H", end="")  # clear screen + move cursor home
+                print(f"{_BOLD}gpu-monitor{_RESET}  {_GRAY}{HOSTNAME}  {ts}{_RESET}")
+                print()
+                hdr = f"{'GPU':<4} {'Name':<28} {'Util':>5} {'Mem Used/Total':>20} {'Temp':>5}"
+                if any(g.get("power_w") is not None for g in gpus):
+                    hdr += f" {'Power/Limit':>12}"
+                if any(g.get("fan_speed") is not None for g in gpus):
+                    hdr += f" {'Fan':>4}"
+                print(f"{_BOLD}{hdr}{_RESET}")
+                print("─" * len(hdr))
+                for g in gpus:
+                    uc = _util_color(g["util"])
+                    tc = _temp_color(g["temp"])
+                    mem = f"{g['mem_used']:,}/{g['mem_total']:,} MiB"
+                    row = f"{g['idx']:<4} {g['name'][:27]:<28} {uc}{g['util']:>4}%{_RESET} {mem:>20} {tc}{g['temp']:>4}°C{_RESET}"
+                    if g.get("power_w") is not None:
+                        pl = g.get("power_limit_w")
+                        pw_str = f"{g['power_w']:.0f}/{pl:.0f}W" if pl else f"{g['power_w']:.0f}W"
+                        row += f" {pw_str:>12}"
+                    if g.get("fan_speed") is not None:
+                        row += f" {g['fan_speed']:>3}%"
+                    print(row)
+                    for p in procs.get(g["idx"], []):
+                        print(f"  {_GRAY}└ {p['name']} (pid {p['pid']}, {p['user']}, {p['mem']} MiB){_RESET}")
+                print()
+                print(f"{_GRAY}Refreshing every {interval}s — Ctrl+C to exit{_RESET}")
+                time.sleep(interval)
+        except KeyboardInterrupt:
+            print()
+            sys.exit(0)
 
     if args.test_notify:
         msg = f"[gpu-monitor] Test notification from {HOSTNAME} — your alerts are working!"

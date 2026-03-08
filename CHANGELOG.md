@@ -35,6 +35,9 @@
 - **Complete monitoring stack** (`docker-compose.monitoring.yml`) — one-command setup: gpu-monitor + Prometheus + Grafana + Alertmanager with auto-provisioned datasource and dashboard
 - **Prometheus config** (`grafana/prometheus.yml`) — ready-to-use scrape config with alerting rules
 - **Alertmanager config** (`grafana/alertmanager.yml`) — routes Alertmanager alerts back through gpu-monitor webhook to all 19 channels
+- **`--watch [SECS]`** — live color terminal table refreshing every SECS (default 2); shows util, memory, temperature, power, fan, and processes with ANSI colors
+- **InfluxDB line protocol export** — `INFLUXDB_URL`/`INFLUXDB_TOKEN`/`INFLUXDB_BUCKET`/`INFLUXDB_ORG`; supports both v1 and v2 endpoints; writes all 9 GPU metrics per check
+- **Web dashboard sparklines** — `/api/history` endpoint + SVG sparklines on each GPU card showing utilization over the last hour
 
 ### Fixed
 - `monitor()` startup log now lists all 19 configured channels (was missing 9 new channels)

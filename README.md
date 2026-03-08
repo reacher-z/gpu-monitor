@@ -27,6 +27,9 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 - **Fan speed** — `gpu_fan_speed_percent` Prometheus metric for thermal correlation
 - **Alertmanager receiver** — route all Prometheus alerts to 19+ channels via `POST /webhook`
 - **`ALERT_WEBHOOK_URL`** — POST JSON to any HTTP endpoint on every alert (CI/CD, PagerDuty, custom integrations)
+- **InfluxDB export** — write GPU metrics in line protocol format to InfluxDB v1/v2 (`INFLUXDB_URL`)
+- **`--watch`** — live color terminal table (like a lite nvtop): `gpu_monitor.py --watch 2`
+- **Web dashboard sparklines** — `--web PORT` now shows utilization history sparklines per GPU card
 - **`--test-notify`** — verify all configured channels with one command
 - **`--json`** — output current GPU stats as JSON for shell scripting (`--json | jq '.gpus[].util'`)
 - **Watchdog** — auto-restart on crash
@@ -98,8 +101,11 @@ python gpu_monitor.py
 
 # Multiple channels at once — just set multiple env vars
 python gpu_monitor.py --once          # check status once and exit
+python gpu_monitor.py --json          # output current stats as JSON
+python gpu_monitor.py --watch 2       # live color terminal table, 2s refresh
 python gpu_monitor.py --channels      # list which channels are configured
 python gpu_monitor.py --test-notify   # send a test alert to verify all channels work
+python gpu_monitor.py --web 8080      # start local dashboard at http://localhost:8080
 ```
 
 Or use the start script:
@@ -193,6 +199,10 @@ Not configured:           Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTal
 | `GPU_TEMP_WARN` | `85` | °C threshold for high temperature warning alert |
 | `GPU_TEMP_CRIT` | `92` | °C threshold for critical temperature alert |
 | `ALERT_WEBHOOK_URL` | — | HTTP endpoint to POST JSON on every alert (CI/CD, PagerDuty, etc.) |
+| `INFLUXDB_URL` | — | InfluxDB server URL (e.g. `http://influxdb:8086`) |
+| `INFLUXDB_TOKEN` | — | API token (v2) or `user:password` (v1) |
+| `INFLUXDB_BUCKET` | `gpu_metrics` | InfluxDB v2 bucket or v1 `db/rp` |
+| `INFLUXDB_ORG` | — | InfluxDB v2 organization name |
 
 ### Slack
 
