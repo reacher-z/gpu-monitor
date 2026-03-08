@@ -1,0 +1,23 @@
+---
+# Headless service for per-node Prometheus scraping
+apiVersion: v1
+kind: Service
+metadata:
+  name: gpu-monitor
+  namespace: gpu-monitor
+  labels:
+    app: gpu-monitor
+  annotations:
+    # Tell Prometheus to scrape each pod individually
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  clusterIP: None  # headless — one endpoint per pod
+  selector:
+    app: gpu-monitor
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: 8080
+      protocol: TCP

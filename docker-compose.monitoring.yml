@@ -1,0 +1,93 @@
+# Full GPU monitoring stack: gpu-monitor + Prometheus + Grafana + Alertmanager
+#
+# Usage:
+#   cp .env.example .env && $EDITOR .env   # add your notification credentials
+#   docker compose -f docker-compose.monitoring.yml up -d
+#
+# Then open:
+#   Grafana:      http://localhost:3000  (admin / admin)
+#   Prometheus:   http://localhost:9090
+#   gpu-monitor:  http://localhost:8080
+#
+# Import the Grafana dashboard: Dashboards → Import → Upload grafana/dashboard.json
+#
+services:
+
+  gpu-monitor:
+    build: .
+    restart: unless-stopped
+    runtime: nvidia
+    environment:
+      WEB_PORT: "8080"
+      CHECK_INTERVAL: "${CHECK_INTERVAL:-60}"
+      IDLE_THRESHOLD: "${IDLE_THRESHOLD:-10}"
+      IDLE_MINUTES: "${IDLE_MINUTES:-5}"
+      ALERT_COOLDOWN: "${ALERT_COOLDOWN:-30}"
+      GPU_TEMP_WARN: "${GPU_TEMP_WARN:-85}"
+      GPU_TEMP_CRIT: "${GPU_TEMP_CRIT:-92}"
+      # Notification channels
+      SLACK_WEBHOOK_URL: "${SLACK_WEBHOOK_URL:-}"
+      DISCORD_WEBHOOK_URL: "${DISCORD_WEBHOOK_URL:-}"
+      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-}"
+      TELEGRAM_CHAT_ID: "${TELEGRAM_CHAT_ID:-}"
+      NTFY_URL: "${NTFY_URL:-}"
+      ALERT_WEBHOOK_URL: "${ALERT_WEBHOOK_URL:-}"
+      # Point to Alertmanager webhook receiver
+      # (Alertmanager will POST alerts back to gpu-monitor/webhook)
+    volumes:
+      - ./logs:/app/logs
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/metrics', timeout=5)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./grafana/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./grafana/alerts.yml:/etc/prometheus/rules/gpu-monitor-alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:-admin}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/gpu-monitor.json
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboard.json:/var/lib/grafana/dashboards/gpu-monitor.json:ro
+      - ./grafana/grafana-provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    restart: unless-stopped
+    volumes:
+      - ./grafana/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    ports:
+      - "9093:9093"
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  alertmanager_data:

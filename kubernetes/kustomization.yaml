@@ -1,0 +1,15 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: gpu-monitor
+
+resources:
+  - namespace.yaml
+  - secret.yaml
+  - daemonset.yaml
+  - service.yaml
+
+commonLabels:
+  app.kubernetes.io/name: gpu-monitor
+  app.kubernetes.io/version: "0.3.0"

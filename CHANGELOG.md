@@ -31,6 +31,10 @@
 - **ECC error detection** — alert when uncorrected volatile ECC errors increase on data-center GPUs (A100/H100/V100); `gpu_ecc_errors_uncorrected` Prometheus metric
 - **`ALERT_WEBHOOK_URL`** — POST `{"host","text","color","timestamp"}` JSON to any HTTP endpoint on every alert; useful for CI/CD, PagerDuty, custom integrations
 - **Grafana dashboard updated** — added Fan Speed panel and Power Draw vs Limit panel (v2)
+- **Kubernetes DaemonSet** (`kubernetes/`) — deploy to every GPU node via `kubectl apply -k kubernetes/`; includes DaemonSet, Service, Secret template, Namespace, and Kustomize config
+- **Complete monitoring stack** (`docker-compose.monitoring.yml`) — one-command setup: gpu-monitor + Prometheus + Grafana + Alertmanager with auto-provisioned datasource and dashboard
+- **Prometheus config** (`grafana/prometheus.yml`) — ready-to-use scrape config with alerting rules
+- **Alertmanager config** (`grafana/alertmanager.yml`) — routes Alertmanager alerts back through gpu-monitor webhook to all 19 channels
 
 ### Fixed
 - `monitor()` startup log now lists all 19 configured channels (was missing 9 new channels)

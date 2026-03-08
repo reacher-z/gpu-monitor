@@ -1,0 +1,25 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname', 'host']
+  group_wait: 10s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: gpu-monitor-webhook
+
+receivers:
+  - name: gpu-monitor-webhook
+    webhook_configs:
+      # Route Alertmanager alerts back to gpu-monitor's webhook receiver.
+      # gpu-monitor will forward them to Slack, Discord, Telegram, etc.
+      - url: http://gpu-monitor:8080/webhook
+        send_resolved: true
+
+inhibit_rules:
+  # Suppress warning if critical is already firing for the same GPU
+  - source_matchers:
+      - severity = critical
+    target_matchers:
+      - severity = warning
+    equal: ['host', 'gpu']

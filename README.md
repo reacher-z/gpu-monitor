@@ -124,6 +124,24 @@ sudo systemctl enable --now gpu-monitor@$USER
 sudo journalctl -u gpu-monitor@$USER -f   # follow logs
 ```
 
+Or run the **complete monitoring stack** (gpu-monitor + Prometheus + Grafana + Alertmanager):
+
+```bash
+cp .env.example .env && $EDITOR .env   # add your notification credentials
+docker compose -f docker-compose.monitoring.yml up -d
+# Grafana: http://localhost:3000  (admin/admin)
+# Import grafana/dashboard.json for the pre-built GPU dashboard
+```
+
+Or deploy to **Kubernetes** as a DaemonSet on every GPU node:
+
+```bash
+# 1. Edit kubernetes/secret.yaml with your notification credentials
+# 2. Apply with Kustomize
+kubectl apply -k kubernetes/
+# Prometheus will auto-discover pods via prometheus.io/scrape: "true" annotations
+```
+
 ## Example Output
 
 **`--once` status check:**
@@ -360,6 +378,42 @@ receivers:
 ```
 
 Alerts arrive with severity-appropriate formatting (`:fire:` for critical, `:warning:` for warning) and resolved alerts are announced with `:white_check_mark:`.
+
+A pre-configured `grafana/alertmanager.yml` is included that routes all Prometheus alerts back through gpu-monitor's webhook receiver, so Alertmanager sends to your 19 notification channels automatically.
+
+## Kubernetes
+
+Deploy gpu-monitor as a DaemonSet to monitor every GPU node in your cluster:
+
+```bash
+# Edit kubernetes/secret.yaml with your notification channel credentials
+kubectl apply -k kubernetes/
+```
+
+The DaemonSet:
+- Schedules on nodes with label `nvidia.com/gpu: "true"`
+- Exposes `/metrics` on port 8080 with Prometheus scraping annotations
+- Uses `spec.nodeName` as hostname for per-node identification in alerts
+- Reads notification credentials from a `gpu-monitor-secrets` Secret
+
+For Prometheus auto-discovery, the pods have `prometheus.io/scrape: "true"` annotations. Enable with:
+```yaml
+# In your prometheus.yml:
+- job_name: gpu-monitor
+  kubernetes_sd_configs:
+    - role: pod
+      namespaces:
+        names: [gpu-monitor]
+  relabel_configs:
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+      action: keep
+      regex: "true"
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+      action: replace
+      target_label: __address__
+      regex: (.+)
+      replacement: ${1}:8080
+```
 
 ## GitHub Pages Dashboard
 

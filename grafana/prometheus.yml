@@ -1,0 +1,29 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+rule_files:
+  - rules/gpu-monitor-alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  # Scrape gpu-monitor metrics
+  - job_name: gpu-monitor
+    static_configs:
+      - targets:
+          - gpu-monitor:8080   # default (same docker-compose network)
+          # Add more servers here:
+          # - server-a:8080
+          # - server-b:8080
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+
+  # Scrape Prometheus itself
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
