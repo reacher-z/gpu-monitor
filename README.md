@@ -587,7 +587,7 @@ export GITHUB_PAGES_REPO=your-username/your-repo
 gpu-monitor
 ```
 
-The monitor pushes `docs/data/{hostname}.json` every check interval. The dashboard at `https://your-username.github.io/your-repo/` auto-refreshes every 30 seconds.
+The monitor pushes `docs/data/{hostname}.json` every check interval. The dashboard auto-fetches new data every second — you'll see updates within moments of each push.
 
 Multi-machine: each machine pushes its own file. The dashboard shows all machines side-by-side with online/stale/offline badges.
 
