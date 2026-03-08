@@ -1,4 +1,4 @@
-# gpu-monitor — GPU crash & OOM alerting, zero dependencies
+# gpu-monitor — GPU crash and OOM alerting, zero dependencies
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -8,13 +8,13 @@
 
 **Your training crashed at 3AM. Six hours of wasted compute. You find out in the morning.**
 
-gpu-monitor catches it the moment it happens and alerts you — crash, OOM, overheat, memory leak, hung worker, ECC error, fan failure, GPU hardware drop.
+gpu-monitor catches it the moment it happens and alerts you — before hours of compute are wasted.
 
 **One Python file. Zero dependencies. [20 notification channels](#supported-notification-channels).**
 
 ```bash
 pip install gpuwatch
-export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+export SLACK_WEBHOOK_URL="..."   # or Discord, Telegram, ntfy — 20 channels
 gpu-monitor
 ```
 
@@ -92,15 +92,13 @@ Silent ECC errors can produce subtly wrong model weights — you catch hardware 
 
 **Step 1 — Install:**
 
+> **Note:** The PyPI package is named `gpuwatch` (`gpu-monitor` was taken). The installed command is still `gpu-monitor`.
+
 ```bash
-# Option A: pip (recommended)
+# Recommended
 pip install gpuwatch
-```
 
-> **Why "gpuwatch"?** The PyPI package is named `gpuwatch` (`gpu-monitor` was already taken on PyPI). The installed command and tool are still called `gpu-monitor`.
-
-```bash
-# Option B: no pip — curl single file (for air-gapped or restricted environments)
+# Alternative: single-file download (no pip required)
 curl -O https://raw.githubusercontent.com/reacher-z/gpu-monitor/main/gpu_monitor.py
 ```
 
@@ -710,11 +708,11 @@ A `CITATION.cff` file is included in the repository for Zotero, Mendeley, and Gi
 
 ## Author
 
-**Yuxuan Zhang** ([reacher-z](https://github.com/reacher-z)) — ML researcher and infrastructure engineer.
+**Yuxuan Zhang** ([reacher-z](https://github.com/reacher-z)) — ML researcher working on agentic AI and LLM systems. Builds open-source tools for ML infrastructure.
 
 [Homepage](https://reacher-z.github.io/) · [Google Scholar](https://scholar.google.com/citations?user=CTY_8xgAAAAJ) · [Twitter/X](https://twitter.com/ReacherZhang) · [GitHub](https://github.com/reacher-z)
 
-If this tool saved your GPU-hours or helped you catch a crash before it ruined a training run, please give it a **[star on GitHub](https://github.com/reacher-z/gpu-monitor)** — it helps other researchers and engineers discover the project.
+If this tool saved your GPU-hours or helped you catch a crash before it ruined a training run, feedback and contributions are always welcome.
 
 Bugs, feature requests, and channel integrations: [open an issue](https://github.com/reacher-z/gpu-monitor/issues) or [submit a PR](https://github.com/reacher-z/gpu-monitor/pulls). Contributions are welcome.
 

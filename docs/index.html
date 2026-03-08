@@ -157,12 +157,9 @@ header {
 }
 
 #clock{color:var(--muted);font-size:11px;margin-left:4px}
-
-/* Countdown ring */
-#countdown{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted)}
-#countdown svg{transform:rotate(-90deg)}
-#cd-track{transition:stroke .3s}
-#cd-circle{stroke-dasharray:22;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear}
+#live-ind{display:flex;align-items:center;gap:5px}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse-ok 2.5s ease-in-out infinite;flex-shrink:0}
+.live-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--green)}
 
 /* ── Global stats strip ──────────────────────────────────────────────────── */
 #global-bar {
@@ -450,11 +447,9 @@ main{padding:14px 20px 0;display:flex;flex-direction:column;gap:12px;flex:1}
 }
 .author-pill:hover{border-color:var(--blue);transform:translateY(-1px)}
 .author-avatar {
-  width:20px;height:20px;border-radius:50%;
-  background:var(--accent-grad);
-  display:flex;align-items:center;justify-content:center;
-  font-size:10px;font-weight:800;color:#fff;
-  flex-shrink:0;
+  width:22px;height:22px;border-radius:50%;
+  object-fit:cover;flex-shrink:0;
+  border:1px solid var(--border);
 }
 .author-name {
   font-size:11px;font-weight:700;color:var(--blue);letter-spacing:.02em;
@@ -463,8 +458,8 @@ main{padding:14px 20px 0;display:flex;flex-direction:column;gap:12px;flex:1}
   font-size:10px;color:var(--muted);
 }
 .hero-install {
-  display:flex;align-items:center;justify-content:center;gap:10px;
-  margin-bottom:22px;flex-wrap:wrap;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  margin-bottom:22px;
 }
 .hero-install-note {font-size:10px;color:var(--muted);}
 
@@ -482,7 +477,8 @@ main{padding:14px 20px 0;display:flex;flex-direction:column;gap:12px;flex:1}
 [data-theme="dark"] .feat:hover{border-color:var(--border-h);transform:translateY(-2px)}
 [data-theme="light"] .feat:hover{box-shadow:0 4px 18px rgba(79,70,229,.12);transform:translateY(-2px)}
 
-.feat-icon{font-size:22px;margin-bottom:10px;display:block}
+.feat-icon{width:22px;height:22px;margin-bottom:10px;display:block;color:var(--blue);flex-shrink:0}
+[data-theme="light"] .feat-icon{color:var(--purple)}
 .feat-title{font-size:11px;font-weight:700;letter-spacing:.04em;margin-bottom:5px;color:var(--text)}
 .feat-desc{font-size:10px;line-height:1.75;color:var(--muted)}
 .feat-stat {
@@ -670,7 +666,6 @@ footer a:hover{color:var(--blue)}
 @media (max-width:560px) {
   header{padding:8px 14px;gap:8px}
   #clock{display:none}
-  #countdown{display:none}
   .g-stat{padding:9px 12px;min-width:60px}
   .g-val{font-size:15px}
   #global-bar{margin:10px 14px 0}
@@ -690,12 +685,9 @@ footer a:hover{color:var(--blue)}
 <header>
   <a class="logo" href="https://github.com/reacher-z/gpu-monitor" target="_blank" rel="noopener">◈ gpu<span>monitor</span></a>
   <span class="spacer"></span>
-  <div id="countdown" aria-label="Next refresh countdown">
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-      <circle id="cd-track" cx="7" cy="7" r="3.5" fill="none" stroke-width="2.5"/>
-      <circle id="cd-circle" cx="7" cy="7" r="3.5" fill="none" stroke="var(--blue)" stroke-width="2.5" stroke-linecap="round"/>
-    </svg>
-    <span id="cd-text">30s</span>
+  <div id="live-ind" aria-label="Dashboard live">
+    <span class="live-dot"></span>
+    <span class="live-lbl">live</span>
   </div>
   <a class="hdr-btn" href="https://github.com/reacher-z/gpu-monitor" target="_blank" rel="noopener" title="View on GitHub">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
@@ -749,7 +741,7 @@ footer a:hover{color:var(--blue)}
       <span class="welcome-icon" aria-hidden="true">◈</span>
       <h1><span class="hero-brand">gpu-monitor</span></h1>
       <p class="hero-punch">Your A100 runs at 3AM. You're asleep.<br>gpu-monitor is watching.</p>
-      <p>Single Python file. Zero infrastructure. Track utilization, memory, temperature, and processes across your entire GPU fleet — instant alerts to 20 channels on crash, OOM, overheat, memory leak, hung worker, ECC error, fan failure, or GPU hardware drop.</p>
+      <p>Monitors your GPU fleet around the clock — alerts you on crash, OOM, overheat, and hardware failures across 20 notification channels. One Python file. Zero dependencies.</p>
 
       <!-- Achievement stats -->
       <div class="hero-stats">
@@ -777,8 +769,11 @@ footer a:hover{color:var(--blue)}
 
       <!-- Install snippet -->
       <div class="hero-install">
-        <code class="inline">pip install gpuwatch</code>
-        <span class="hero-install-note">· command: <code class="inline">gpu-monitor</code></span>
+        <div class="code-block" style="margin:0;max-width:360px">
+          <code>pip install gpuwatch</code>
+          <button class="copy-btn" onclick="copyCode(this,'pip install gpuwatch')">copy</button>
+        </div>
+        <span class="hero-install-note">command: <code class="inline">gpu-monitor</code></span>
       </div>
 
       <!-- CTAs -->
@@ -796,7 +791,7 @@ footer a:hover{color:var(--blue)}
       <!-- Author credit — prominent -->
       <div class="hero-author">
         <a class="author-pill" href="https://reacher-z.github.io/" target="_blank" rel="noopener" aria-label="Yuxuan Zhang personal homepage">
-          <span class="author-avatar" aria-hidden="true">R</span>
+          <img class="author-avatar" src="https://github.com/reacher-z.png?size=40" alt="reacher-z" loading="lazy">
           <span class="author-name">Yuxuan Zhang · reacher-z</span>
         </a>
         <span class="author-meta">MIT License · Open source</span>
@@ -806,37 +801,37 @@ footer a:hover{color:var(--blue)}
     <!-- Feature cards -->
     <div class="features">
       <div class="feat">
-        <span class="feat-icon" aria-hidden="true">⚡</span>
+        <svg class="feat-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M11 2L4 11h5.5l-1 7 7.5-10H10.5L11 2z"/></svg>
         <div class="feat-title">Zero Dependencies</div>
         <div class="feat-desc">One Python file, under 1MB. Runs anywhere <code class="inline">nvidia-smi</code> is available — no environment setup, no docker, no daemon.</div>
-        <span class="feat-stat">pip install · zero deps</span>
+        <span class="feat-stat">stdlib only · &lt; 1MB</span>
       </div>
       <div class="feat">
-        <span class="feat-icon" aria-hidden="true">🔔</span>
+        <svg class="feat-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 2a1 1 0 00-1 1v.4A5 5 0 005 8.5v3l-2 2.5h14l-2-2.5v-3A5 5 0 0011 3.4V3a1 1 0 00-1-1zm-2 16a2 2 0 004 0H8z"/></svg>
         <div class="feat-title">20 Built-in Alert Channels</div>
         <div class="feat-desc">Slack, Discord, Telegram, PagerDuty, Teams, Feishu, DingTalk, ntfy, Pushover, iMessage and 10 more — pick what your team already uses, set one env var.</div>
         <span class="feat-stat">alerts fire in &lt; 30s</span>
       </div>
       <div class="feat">
-        <span class="feat-icon" aria-hidden="true">📊</span>
+        <svg class="feat-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2 17V9h3v8H2zm4 0V5h3v12H6zm4 0V7h3v10h-3zm4 0V3h3v14h-3z"/></svg>
         <div class="feat-title">Prometheus + Grafana</div>
         <div class="feat-desc">11 Prometheus metrics via built-in <code class="inline">/metrics</code>, a ready-made Grafana dashboard, and a drop-in docker-compose monitoring stack.</div>
         <span class="feat-stat">11 metrics · production-ready</span>
       </div>
       <div class="feat">
-        <span class="feat-icon" aria-hidden="true">🌐</span>
+        <svg class="feat-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2 4a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V4zm14 8V4H4v8h12zM7 16v1H6v1h8v-1h-1v-1H7z"/></svg>
         <div class="feat-title">This Live Dashboard</div>
-        <div class="feat-desc">Push stats to GitHub Pages — zero server cost, zero infrastructure. Anyone with the URL sees your fleet in real time, updated every 60 seconds.</div>
+        <div class="feat-desc">Push stats to GitHub Pages — zero server cost, zero infrastructure. Anyone with the URL sees your fleet in real time, refreshed automatically.</div>
         <span class="feat-stat">free forever</span>
       </div>
       <div class="feat">
-        <span class="feat-icon" aria-hidden="true">🛡️</span>
+        <svg class="feat-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 1L3 4.5v5c0 4.6 3 8.9 7 10 4-1.1 7-5.4 7-10v-5L10 1zm-1.5 11L6 9.5 7.4 8l1.1 1.1 3.6-3.6 1.4 1.4-5 5z"/></svg>
         <div class="feat-title">Smart Alerting</div>
         <div class="feat-desc">8 alert types: crash, OOM, memory leak, overheat, hung worker, ECC errors, fan failure, GPU hardware drop — all with hysteresis to avoid alert spam.</div>
         <span class="feat-stat">fewer false positives</span>
       </div>
       <div class="feat">
-        <span class="feat-icon" aria-hidden="true">☸️</span>
+        <svg class="feat-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 2l7 4v8l-7 4-7-4V6l7-4zm0 2.3L5 7.2v5.6l5 2.9 5-2.9V7.2L10 4.3zM9 8h2v1.5l1.7 1-1 1.7-1.7-1-1.7 1-1-1.7L9 9.5V8z"/></svg>
         <div class="feat-title">Kubernetes Ready</div>
         <div class="feat-desc">DaemonSet manifests and Kustomize overlays included. Deploy across a multi-node cluster without changing a single line of Python.</div>
         <span class="feat-stat">cluster-scale</span>
@@ -930,13 +925,22 @@ export NTFY_URL=https://ntfy.sh/my-gpu-alerts-abc123</code>
         <div class="notify-preview">
           <div class="notify-preview-label">What you'll receive in Slack / Discord</div>
           <div class="notify-preview-body">
+            <div class="notify-bar" style="margin-bottom:10px">
+              <div class="notify-sidebar" style="background:var(--red)"></div>
+              <div class="notify-content">
+                <div class="notify-title">◈ gpu-monitor · gpu-cluster-1</div>
+                <div class="notify-line"><span class="warn">GPUs went idle — processes exited: 12345, 12346</span></div>
+                <div class="notify-line">Avg util <span class="ok">1%</span> · Temp 38°C · Mem 2G/320G</div>
+                <div class="notify-line" style="font-size:9px;color:var(--muted)">2026-03-08 03:14:22 UTC — crash detected</div>
+              </div>
+            </div>
             <div class="notify-bar">
               <div class="notify-sidebar"></div>
               <div class="notify-content">
                 <div class="notify-title">◈ gpu-monitor · rig-01</div>
                 <div class="notify-line">GPU 1 · A100-SXM4 <span class="warn">memory at 90%</span> (72.1 / 80.0 GiB)</div>
                 <div class="notify-line">Util <span class="ok">92%</span> · Temp <span class="warn">71°C</span> · Power 388W</div>
-                <div class="notify-line" style="font-size:9px;color:var(--muted)">2026-03-08 03:14:22 UTC</div>
+                <div class="notify-line" style="font-size:9px;color:var(--muted)">2026-03-08 03:15:01 UTC — OOM warning</div>
               </div>
             </div>
           </div>
@@ -997,7 +1001,7 @@ export NTFY_URL=https://ntfy.sh/my-gpu-alerts-abc123</code>
   </div>
   <div class="footer-links">
     <a href="https://github.com/reacher-z/gpu-monitor" target="_blank" rel="noopener">GitHub</a>
-    <a href="https://github.com/reacher-z/gpu-monitor/blob/main/README.md" target="_blank" rel="noopener">Docs</a>
+    <a href="https://github.com/reacher-z/gpu-monitor#quick-start" target="_blank" rel="noopener">Quick Start</a>
     <a href="https://reacher-z.github.io/" target="_blank" rel="noopener">Author</a>
     <a href="https://twitter.com/ReacherZhang" target="_blank" rel="noopener">Twitter/X</a>
     <a href="https://github.com/reacher-z/gpu-monitor/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
@@ -1014,13 +1018,10 @@ const OFFLINE_SEC = 300;
 // ── Theme ────────────────────────────────────────────────────────────────────
 const html    = document.documentElement;
 const themBtn = document.getElementById('theme-btn');
-const cdTrack = document.getElementById('cd-track');
 
 function applyTheme(t) {
   html.setAttribute('data-theme', t);
   themBtn.textContent = t === 'dark' ? '☀' : '☾';
-  cdTrack.setAttribute('stroke', t === 'dark'
-    ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.1)');
   localStorage.setItem('theme', t);
 }
 function toggleTheme() {
@@ -1252,20 +1253,13 @@ async function load() {
   _firstLoad = false;
 }
 
-// ── Clock & countdown ─────────────────────────────────────────────────────────
-let _rem  = REFRESH_SEC;
-const _c  = document.getElementById('cd-circle');
-const _ct = document.getElementById('cd-text');
-const DASH = 22;
-
+// ── Clock ─────────────────────────────────────────────────────────────────────
 setInterval(() => {
   const n = new Date();
   document.getElementById('clock').textContent = n.toLocaleDateString() + ' ' + n.toLocaleTimeString();
-  _rem--;
-  if (_rem <= 0) { _rem = REFRESH_SEC; load(); }
-  _ct.textContent = _rem + 's';
-  _c.style.strokeDashoffset = DASH * (1 - _rem / REFRESH_SEC);
 }, 1000);
+
+setInterval(load, REFRESH_SEC * 1000);
 
 setInterval(() => {
   document.querySelectorAll('[data-ts]').forEach(el => {
