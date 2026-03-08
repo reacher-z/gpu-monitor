@@ -1,4 +1,4 @@
-# gpu-monitor
+# gpu-monitor — GPU crash & OOM alerting, zero dependencies
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -95,8 +95,12 @@ Silent ECC errors can produce subtly wrong model weights — you catch hardware 
 ```bash
 # Option A: pip (recommended)
 pip install gpuwatch
+```
 
-# Option B: single file, zero install
+> **Why "gpuwatch"?** The PyPI package is named `gpuwatch` (`gpu-monitor` was already taken on PyPI). The installed command and tool are still called `gpu-monitor`.
+
+```bash
+# Option B: no pip — curl single file (for air-gapped or restricted environments)
 curl -O https://raw.githubusercontent.com/reacher-z/gpu-monitor/main/gpu_monitor.py
 ```
 
@@ -232,6 +236,9 @@ gpu-monitor fills a gap that existing tools don't: **unattended background monit
 | Live terminal view | ✅ `--watch` | ✅ | ✅ | ❌ |
 | Kubernetes DaemonSet | ✅ | ❌ | ❌ | ❌ |
 | Multi-machine dashboard | ✅ **GitHub Pages (free)** | ❌ | ❌ | ✅ paid |
+| OOM memory warning | ✅ | ❌ | ❌ | ❌ |
+| Fan failure detection | ✅ | ❌ | ❌ | ❌ |
+| GPU PCIe bus drop | ✅ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -246,6 +253,9 @@ gpu-monitor fills a gap that existing tools don't: **unattended background monit
 - **Power throttle alert** — fires when power draw hits 95% of TDP limit
 - **ECC error detection** — alert on uncorrected volatile ECC errors (A100/H100/V100); prevents silent training corruption
 - **Memory leak detection** — alert when GPU memory grows unexpectedly without process changes
+- **OOM warning** — `GPU_MEM_WARN` (default 90%) and `GPU_MEM_CRIT` (default 98%) alert before the process crashes with out-of-memory
+- **Fan failure detection** — alert when fan speed reports 0% while GPU temperature is above threshold (hardware fault)
+- **GPU hardware drop** — alert when GPU count drops between polls; catches PCIe bus failures and hardware faults
 
 **Visibility — always know what your GPUs are doing**
 - **Periodic status** — active: every 10 min, idle: every 30 min
@@ -325,6 +335,9 @@ gpu-monitor fills a gap that existing tools don't: **unattended background monit
 | `MEMLEAK_MINUTES` | `10` | Window (minutes) for memory leak detection |
 | `GPU_TEMP_WARN` | `85` | °C threshold for high-temperature warning alert |
 | `GPU_TEMP_CRIT` | `92` | °C threshold for critical temperature alert |
+| `GPU_MEM_WARN` | `90` | GPU memory % to trigger OOM warning alert |
+| `GPU_MEM_CRIT` | `98` | GPU memory % to trigger critical OOM alert (imminent crash) |
+| `GPU_FAN_FAIL_TEMP` | `70` | °C — alert when fan=0% above this temp; 0 = disabled |
 | `ALERT_WEBHOOK_URL` | — | HTTP endpoint to POST JSON on every alert |
 | `INFLUXDB_URL` | — | InfluxDB server URL (e.g. `http://influxdb:8086`) |
 | `INFLUXDB_TOKEN` | — | API token (v2) or `user:password` (v1) |
@@ -666,13 +679,13 @@ gpu-monitor
 
 ## Who Uses gpu-monitor?
 
-gpu-monitor is used by ML researchers, PhD students, and infrastructure engineers who run long training jobs and can't watch their machines around the clock.
+gpu-monitor is built for anyone running long GPU workloads who can't watch their machines around the clock.
 
-**Common setups:**
-- Single researcher monitoring a local workstation with Telegram alerts
-- Lab with 4–8 GPU nodes, all reporting to a shared Slack channel with per-machine colors
-- Cloud cluster on Kubernetes, with PagerDuty integration for on-call rotation
-- Self-hosted Prometheus + Grafana stack with Alertmanager routing through gpu-monitor's webhook receiver
+**Designed for:**
+- ML researchers and PhD students running overnight training jobs on local or cloud GPUs
+- Lab admins managing shared GPU clusters (4–32 GPUs, multi-user, multi-machine)
+- MLOps and infrastructure engineers who need production-grade GPU observability
+- Self-hosters running local LLMs who want crash and OOM alerts without cloud dependencies
 
 Have a setup you're proud of? **[Open an issue with the `showcase` label](https://github.com/reacher-z/gpu-monitor/issues/new?labels=showcase)** and share it — setups get featured here.
 
@@ -697,8 +710,12 @@ A `CITATION.cff` file is included in the repository for Zotero, Mendeley, and Gi
 
 ## Author
 
-Built and maintained by [reacher-z](https://github.com/reacher-z) — ML infrastructure and GPU monitoring tools.
+**Yuxuan Zhang** ([reacher-z](https://github.com/reacher-z)) — ML researcher and infrastructure engineer.
+
+[Homepage](https://reacher-z.github.io/) · [Google Scholar](https://scholar.google.com/citations?user=CTY_8xgAAAAJ) · [Twitter/X](https://twitter.com/ReacherZhang) · [GitHub](https://github.com/reacher-z)
 
 If this tool saved your GPU-hours or helped you catch a crash before it ruined a training run, please give it a **[star on GitHub](https://github.com/reacher-z/gpu-monitor)** — it helps other researchers and engineers discover the project.
 
 Bugs, feature requests, and channel integrations: [open an issue](https://github.com/reacher-z/gpu-monitor/issues) or [submit a PR](https://github.com/reacher-z/gpu-monitor/pulls). Contributions are welcome.
+
+⭐ **[Star gpu-monitor](https://github.com/reacher-z/gpu-monitor)** — every star helps more ML engineers find it.

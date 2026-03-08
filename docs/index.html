@@ -490,6 +490,11 @@ main{padding:14px 20px 0;display:flex;flex-direction:column;gap:12px;flex:1}
 .author-meta {
   font-size:10px;color:var(--muted);
 }
+.hero-install {
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  margin-bottom:22px;flex-wrap:wrap;
+}
+.hero-install-note {font-size:10px;color:var(--muted);}
 
 /* Feature cards */
 .features {
@@ -785,8 +790,8 @@ footer a:hover{color:var(--blue)}
           <span class="h-stat-lbl">Alert channels</span>
         </div>
         <div class="h-stat">
-          <span class="h-stat-val">60s</span>
-          <span class="h-stat-lbl">Default poll</span>
+          <span class="h-stat-val">8</span>
+          <span class="h-stat-lbl">Alert types</span>
         </div>
         <div class="h-stat">
           <span class="h-stat-val">11</span>
@@ -796,6 +801,12 @@ footer a:hover{color:var(--blue)}
           <span class="h-stat-val">0</span>
           <span class="h-stat-lbl">Dependencies</span>
         </div>
+      </div>
+
+      <!-- Install snippet -->
+      <div class="hero-install">
+        <code class="inline">pip install gpuwatch</code>
+        <span class="hero-install-note">· command: <code class="inline">gpu-monitor</code></span>
       </div>
 
       <!-- CTAs -->
@@ -818,17 +829,13 @@ footer a:hover{color:var(--blue)}
           </span>
           <span class="star-badge-right">★ Star</span>
         </a>
-        <span class="used-in-prod">
-          <span class="prod-dot" aria-hidden="true"></span>
-          Used in production by ML teams
-        </span>
       </div>
 
       <!-- Author credit — prominent -->
       <div class="hero-author">
-        <a class="author-pill" href="https://github.com/reacher-z" target="_blank" rel="noopener" aria-label="Author reacher-z on GitHub">
+        <a class="author-pill" href="https://reacher-z.github.io/" target="_blank" rel="noopener" aria-label="Yuxuan Zhang personal homepage">
           <span class="author-avatar" aria-hidden="true">R</span>
-          <span class="author-name">reacher-z</span>
+          <span class="author-name">Yuxuan Zhang · reacher-z</span>
         </a>
         <span class="author-meta">MIT License · Open source</span>
       </div>
@@ -840,7 +847,7 @@ footer a:hover{color:var(--blue)}
         <span class="feat-icon" aria-hidden="true">⚡</span>
         <div class="feat-title">Zero Dependencies</div>
         <div class="feat-desc">One Python file, under 1MB. Runs anywhere <code class="inline">nvidia-smi</code> is available — no environment setup, no docker, no daemon.</div>
-        <span class="feat-stat">curl &amp; run in 30s</span>
+        <span class="feat-stat">pip install · zero deps</span>
       </div>
       <div class="feat">
         <span class="feat-icon" aria-hidden="true">🔔</span>
@@ -863,7 +870,7 @@ footer a:hover{color:var(--blue)}
       <div class="feat">
         <span class="feat-icon" aria-hidden="true">🛡️</span>
         <div class="feat-title">Smart Alerting</div>
-        <div class="feat-desc">Catches what simple thresholds miss — memory leak detection, temperature hysteresis, power throttle alerts, and ECC error tracking per GPU.</div>
+        <div class="feat-desc">8 alert types: crash, OOM, memory leak, overheat, hung worker, ECC errors, fan failure, GPU hardware drop — all with hysteresis to avoid alert spam.</div>
         <span class="feat-stat">fewer false positives</span>
       </div>
       <div class="feat">
@@ -926,13 +933,16 @@ footer a:hover{color:var(--blue)}
             <div class="setup-step">
               <div class="step-num" aria-hidden="true">2</div>
               <div class="step-body">
-                <strong>Create a GitHub token &amp; set env vars</strong>
-                Go to <a href="https://github.com/settings/tokens" target="_blank" rel="noopener" style="color:var(--blue)">github.com/settings/tokens</a> → New token (classic) → tick <code class="inline">public_repo</code>, then:
+                <strong>Set a notification channel</strong> — pick any one:
                 <div class="code-block" style="margin-top:8px">
-                  <code>export GITHUB_PAGES_REPO=your-username/gpu-monitor
-export GITHUB_PAGES_TOKEN=ghp_...</code>
-                  <button class="copy-btn" onclick="copyCode(this,'export GITHUB_PAGES_REPO=your-username/gpu-monitor\nexport GITHUB_PAGES_TOKEN=ghp_...')">copy</button>
+                  <code>export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
+# or Discord
+export DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+# or ntfy (zero signup — subscribe on your phone)
+export NTFY_URL=https://ntfy.sh/my-gpu-alerts-abc123</code>
+                  <button class="copy-btn" onclick="copyCode(this,'export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...')">copy</button>
                 </div>
+                Run <code class="inline">gpu-monitor --channels</code> to see all 20 options.
               </div>
             </div>
           </li>
@@ -940,17 +950,15 @@ export GITHUB_PAGES_TOKEN=ghp_...</code>
             <div class="setup-step">
               <div class="step-num" aria-hidden="true">3</div>
               <div class="step-body">
-                <strong>Run on each machine</strong>
+                <strong>Run</strong>
                 <div class="code-block">
                   <code>gpu-monitor</code>
                   <button class="copy-btn" onclick="copyCode(this,'gpu-monitor')">copy</button>
                 </div>
-                Stats push every 60 seconds and appear on this dashboard automatically. Add Slack alerts with one extra env var:
-                <div class="code-block" style="margin-top:8px">
-                  <code>export SLACK_WEBHOOK_URL=https://hooks.slack.com/...</code>
-                  <button class="copy-btn" onclick="copyCode(this,'export SLACK_WEBHOOK_URL=https://hooks.slack.com/...')">copy</button>
+                You'll get an alert immediately on startup, then again on crash, OOM, overheat, or idle.
+                <div class="setup-note" style="margin-top:12px">
+                  <strong>Optional — live web dashboard:</strong> fork this repo, enable GitHub Pages, then set <code class="inline">GITHUB_PAGES_REPO=your-username/gpu-monitor</code> and <code class="inline">GITHUB_PAGES_TOKEN=ghp_...</code>. Stats push automatically every 60 seconds.
                 </div>
-                Run <code class="inline">gpu-monitor --channels</code> to see all 20 options.
               </div>
             </div>
           </li>
@@ -1028,6 +1036,8 @@ export GITHUB_PAGES_TOKEN=ghp_...</code>
   <div class="footer-links">
     <a href="https://github.com/reacher-z/gpu-monitor" target="_blank" rel="noopener">GitHub</a>
     <a href="https://github.com/reacher-z/gpu-monitor/blob/main/README.md" target="_blank" rel="noopener">Docs</a>
+    <a href="https://reacher-z.github.io/" target="_blank" rel="noopener">Author</a>
+    <a href="https://twitter.com/ReacherZhang" target="_blank" rel="noopener">Twitter/X</a>
     <a href="https://github.com/reacher-z/gpu-monitor/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
   </div>
 </footer>
@@ -1035,7 +1045,7 @@ export GITHUB_PAGES_TOKEN=ghp_...</code>
 <script>
 // ── Config ───────────────────────────────────────────────────────────────────
 const DATA_BASE   = './data';
-const REFRESH_SEC = 30;
+const REFRESH_SEC = 1;
 const STALE_SEC   = 120;
 const OFFLINE_SEC = 300;
 
