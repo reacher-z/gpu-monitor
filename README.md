@@ -23,8 +23,10 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 - **Memory leak detection** — alert when GPU memory grows unexpectedly without process changes
 - **Temperature alerting** — `GPU_TEMP_WARN` / `GPU_TEMP_CRIT` thresholds, no Prometheus required
 - **Power throttle alert** — notify when GPU power draw hits 95% of its TDP limit
+- **ECC error detection** — alert on uncorrected volatile ECC errors (A100/H100/V100); prevents silent training corruption
 - **Fan speed** — `gpu_fan_speed_percent` Prometheus metric for thermal correlation
 - **Alertmanager receiver** — route all Prometheus alerts to 19+ channels via `POST /webhook`
+- **`ALERT_WEBHOOK_URL`** — POST JSON to any HTTP endpoint on every alert (CI/CD, PagerDuty, custom integrations)
 - **`--test-notify`** — verify all configured channels with one command
 - **`--json`** — output current GPU stats as JSON for shell scripting (`--json | jq '.gpus[].util'`)
 - **Watchdog** — auto-restart on crash
@@ -172,6 +174,7 @@ Not configured:           Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTal
 | `MEMLEAK_MINUTES` | `10` | Window (minutes) for memory leak detection |
 | `GPU_TEMP_WARN` | `85` | °C threshold for high temperature warning alert |
 | `GPU_TEMP_CRIT` | `92` | °C threshold for critical temperature alert |
+| `ALERT_WEBHOOK_URL` | — | HTTP endpoint to POST JSON on every alert (CI/CD, PagerDuty, etc.) |
 
 ### Slack
 
@@ -313,7 +316,7 @@ python gpu_monitor.py
 # Metrics at http://localhost:8080/metrics
 ```
 
-Exposed metrics: `gpu_utilization_percent`, `gpu_memory_used_mib`, `gpu_memory_total_mib`, `gpu_memory_utilization_percent`, `gpu_temperature_celsius`, `gpu_power_watts`, `gpu_power_limit_watts`, `gpu_clock_sm_mhz`, `gpu_fan_speed_percent`, `gpu_process_count`. All labeled with `gpu` index and `host`.
+Exposed metrics: `gpu_utilization_percent`, `gpu_memory_used_mib`, `gpu_memory_total_mib`, `gpu_memory_utilization_percent`, `gpu_temperature_celsius`, `gpu_power_watts`, `gpu_power_limit_watts`, `gpu_clock_sm_mhz`, `gpu_fan_speed_percent`, `gpu_ecc_errors_uncorrected`, `gpu_process_count`. All labeled with `gpu` index and `host`.
 
 Add to your `prometheus.yml`:
 ```yaml

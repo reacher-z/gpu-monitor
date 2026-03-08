@@ -28,6 +28,9 @@
 - **Power limit metric** — `gpu_power_limit_watts` Prometheus metric (enforced.power.limit)
 - **Alertmanager webhook receiver** — `POST /webhook` on `WEB_PORT` accepts Prometheus Alertmanager payloads and routes them to all 19+ configured channels; supports firing/resolved and severity
 - **`--json` flag** — print current GPU stats and processes as JSON and exit (scriptable: `gpu_monitor.py --json | jq '.gpus[].util'`)
+- **ECC error detection** — alert when uncorrected volatile ECC errors increase on data-center GPUs (A100/H100/V100); `gpu_ecc_errors_uncorrected` Prometheus metric
+- **`ALERT_WEBHOOK_URL`** — POST `{"host","text","color","timestamp"}` JSON to any HTTP endpoint on every alert; useful for CI/CD, PagerDuty, custom integrations
+- **Grafana dashboard updated** — added Fan Speed panel and Power Draw vs Limit panel (v2)
 
 ### Fixed
 - `monitor()` startup log now lists all 19 configured channels (was missing 9 new channels)

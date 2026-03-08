@@ -121,6 +121,8 @@ MEMLEAK_MINUTES   = int(os.environ.get("MEMLEAK_MINUTES",   "10"))  # window to 
 # Temperature alerting (0 = disabled)
 GPU_TEMP_WARN = int(os.environ.get("GPU_TEMP_WARN", "85"))  # °C — warning alert
 GPU_TEMP_CRIT = int(os.environ.get("GPU_TEMP_CRIT", "92"))  # °C — critical alert
+# Generic alert webhook — receives a POST with JSON body for every alert
+ALERT_WEBHOOK_URL = os.environ.get("ALERT_WEBHOOK_URL", "")
 
 # GitHub Pages dashboard (optional)
 GITHUB_PAGES_TOKEN = os.environ.get("GITHUB_PAGES_TOKEN", "")
@@ -191,6 +193,7 @@ def get_gpu_stats() -> list[dict]:
                 "clock_mhz":    None,
                 "fan_speed":     None,
                 "power_limit_w": None,
+                "ecc_errors":    None,
             })
 
         # Optional query — power, clock, fan, power limit; skip silently if not supported
@@ -217,6 +220,27 @@ def get_gpu_stats() -> list[dict]:
                         idx_map[idx]["power_limit_w"] = _safe_float(p[4])
         except Exception as e:
             logger.debug(f"Optional power/clock/fan query failed (skipping): {e}")
+
+        # Optional ECC query — only available on Tesla/data-center GPUs (A100, H100, V100, etc.)
+        try:
+            r3 = subprocess.run(
+                ["nvidia-smi",
+                 "--query-gpu=index,ecc.errors.uncorrected.volatile.total",
+                 "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=10,
+            )
+            if r3.returncode == 0:
+                idx_map = {g["idx"]: g for g in gpus}
+                for line in r3.stdout.strip().split("\n"):
+                    if not line.strip():
+                        continue
+                    p = [x.strip() for x in line.split(",")]
+                    if len(p) >= 2:
+                        idx = _safe_int(p[0])
+                        if idx is not None and idx in idx_map:
+                            idx_map[idx]["ecc_errors"] = _safe_int(p[1])
+        except Exception as e:
+            logger.debug(f"Optional ECC query failed (skipping): {e}")
 
         return gpus
     except Exception as e:
@@ -761,6 +785,22 @@ def notify(slack_text: str, color: str = "") -> None:
             send_gotify(plain)
             send_ntfy(plain)
             send_openclaw(plain)
+            if ALERT_WEBHOOK_URL:
+                try:
+                    body = json.dumps({
+                        "host": HOSTNAME,
+                        "text": plain,
+                        "color": color,
+                        "timestamp": datetime.now().isoformat(timespec="seconds"),
+                    }).encode()
+                    req = urllib.request.Request(
+                        ALERT_WEBHOOK_URL, data=body,
+                        headers={"Content-Type": "application/json"},
+                        method="POST",
+                    )
+                    urllib.request.urlopen(req, timeout=10)
+                except Exception as e:
+                    logger.warning(f"ALERT_WEBHOOK_URL failed: {e}")
         except Exception as e:
             logger.error(f"notify dispatch error: {e}")
     threading.Thread(target=_dispatch, daemon=True).start()
@@ -1074,6 +1114,11 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
             if fs:
                 lines += ["# HELP gpu_fan_speed_percent GPU fan speed %", "# TYPE gpu_fan_speed_percent gauge"]
                 lines += [f'gpu_fan_speed_percent{{gpu="{g["idx"]}",host="{h}"}} {g["fan_speed"]}' for g in fs]
+            # ECC uncorrected errors (data-center GPUs only)
+            ec = [g for g in gpus if g.get("ecc_errors") is not None]
+            if ec:
+                lines += ["# HELP gpu_ecc_errors_uncorrected GPU uncorrected volatile ECC errors", "# TYPE gpu_ecc_errors_uncorrected gauge"]
+                lines += [f'gpu_ecc_errors_uncorrected{{gpu="{g["idx"]}",host="{h}"}} {g["ecc_errors"]}' for g in ec]
             # Process count per GPU
             procs_now = get_gpu_processes()
             lines += ["# HELP gpu_process_count Number of compute processes on GPU", "# TYPE gpu_process_count gauge"]
@@ -1276,6 +1321,8 @@ def monitor():
     _temp_alerted: dict[int, str] = {}
     # Power throttle tracking: set of GPU indices currently near power limit
     _power_alerted: set[int] = set()
+    # ECC error tracking: {gpu_idx: last_known_count}
+    _ecc_prev: dict[int, int] = {}
 
     channels = [c for c, v in [
         ("Slack",        SLACK_WEBHOOK_URL),
@@ -1491,6 +1538,23 @@ def monitor():
             elif pct < 90:
                 _power_alerted.discard(idx)
 
+        # --- ECC error alerting (data-center GPUs: A100, H100, V100, etc.) ---
+        for g in gpus:
+            idx  = g["idx"]
+            errs = g.get("ecc_errors")
+            if errs is None:
+                continue
+            prev = _ecc_prev.get(idx)
+            if prev is not None and errs > prev:
+                new_errs = errs - prev
+                logger.error(f"GPU{idx}: {new_errs} new uncorrected ECC error(s) (total: {errs})")
+                notify(
+                    f":skull: *GPU{idx} ECC error* — {new_errs} new uncorrected volatile ECC error(s) "
+                    f"(total: {errs}). GPU memory may be corrupted. Consider rebooting.",
+                    color="#e01e5a",
+                )
+            _ecc_prev[idx] = errs
+
         time.sleep(CHECK_INTERVAL)
 
 
@@ -1543,7 +1607,8 @@ def main():
             ("Teams",        TEAMS_WEBHOOK_URL),
             ("Google Chat",  GOOGLE_CHAT_WEBHOOK_URL),
             ("Zulip",        ZULIP_SITE and ZULIP_EMAIL and ZULIP_API_KEY),
-            ("OpenClaw",     OPENCLAW_WEBHOOK_URL),
+            ("OpenClaw",        OPENCLAW_WEBHOOK_URL),
+            ("Alert Webhook",  ALERT_WEBHOOK_URL),
         ]
         active   = [n for n, v in all_channels if v]
         inactive = [n for n, v in all_channels if not v]
