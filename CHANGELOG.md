@@ -34,7 +34,7 @@
 - **Kubernetes DaemonSet** (`kubernetes/`) — deploy to every GPU node via `kubectl apply -k kubernetes/`; includes DaemonSet, Service, Secret template, Namespace, and Kustomize config
 - **Complete monitoring stack** (`docker-compose.monitoring.yml`) — one-command setup: gpu-monitor + Prometheus + Grafana + Alertmanager with auto-provisioned datasource and dashboard
 - **Prometheus config** (`grafana/prometheus.yml`) — ready-to-use scrape config with alerting rules
-- **Alertmanager config** (`grafana/alertmanager.yml`) — routes Alertmanager alerts back through gpu-monitor webhook to all 19 channels
+- **Alertmanager config** (`grafana/alertmanager.yml`) — routes Alertmanager alerts back through gpu-monitor webhook to all 20 channels
 - **PagerDuty** — 20th notification channel; Events API v2 via `PAGERDUTY_INTEGRATION_KEY`
 - **OpenTelemetry OTLP HTTP** — `OTEL_EXPORTER_OTLP_ENDPOINT` exports all 11 GPU metrics as OTLP/JSON gauges to any OTel-compatible backend (Grafana, Honeycomb, Lightstep, OTLP Collector, etc.)
 - **Datadog DogStatsD** — `DATADOG_STATSD_HOST`/`DATADOG_STATSD_PORT`; sends all 9 GPU metrics as gauges with gpu/host/gpu_name tags via UDP

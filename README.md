@@ -405,7 +405,7 @@ Included rules:
 
 ### Alertmanager webhook receiver
 
-When `WEB_PORT` is set, gpu-monitor also acts as an Alertmanager webhook receiver — forwarding **any** Prometheus alert (GPU or otherwise) to all 19 configured notification channels.
+When `WEB_PORT` is set, gpu-monitor also acts as an Alertmanager webhook receiver — forwarding **any** Prometheus alert (GPU or otherwise) to all 20 configured notification channels.
 
 Configure in Alertmanager:
 ```yaml
@@ -418,7 +418,7 @@ receivers:
 
 Alerts arrive with severity-appropriate formatting (`:fire:` for critical, `:warning:` for warning) and resolved alerts are announced with `:white_check_mark:`.
 
-A pre-configured `grafana/alertmanager.yml` is included that routes all Prometheus alerts back through gpu-monitor's webhook receiver, so Alertmanager sends to your 19 notification channels automatically.
+A pre-configured `grafana/alertmanager.yml` is included that routes all Prometheus alerts back through gpu-monitor's webhook receiver, so Alertmanager sends to your 20 notification channels automatically.
 
 ## Kubernetes
 

@@ -7,7 +7,8 @@ Supported notification channels (configure via environment variables):
   WeCom (企业微信), Feishu (飞书), DingTalk (钉钉), Bark (iOS push),
   ntfy (self-hosted or ntfy.sh), Gotify (self-hosted), Pushover, Microsoft Teams, Mattermost,
   Google Chat, Zulip, Rocket.Chat, Apprise (optional — 80+ extra services via pip install apprise),
-  OpenClaw (routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, etc.)
+  OpenClaw (routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, etc.),
+  PagerDuty (Events API v2)
 
 Web dashboard:
   Set WEB_PORT=8080 (or any port) to enable the real-time GPU dashboard.
