@@ -1,4 +1,4 @@
-# GPU Monitor
+# gpu-monitor
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -6,9 +6,11 @@
 [![20 channels](https://img.shields.io/badge/notification%20channels-20%20built--in-blueviolet.svg)](#supported-notification-channels)
 [![GitHub Stars](https://img.shields.io/github/stars/reacher-z/gpu-monitor?style=social)](https://github.com/reacher-z/gpu-monitor)
 
-**Your GPU is idle. Your training crashed 4 hours ago. You find out in the morning.**
+**Your training crashed at 3AM. Six hours of wasted compute. You find out in the morning.**
 
-gpu-monitor sends you a Slack message the moment it happens — crash, overheat, memory leak, hung worker, ECC error. It runs silently in the background on your Linux server, requires zero dependencies, and alerts you on [20 built-in channels](#supported-notification-channels) while you sleep, travel, or work on something else.
+gpu-monitor catches it the moment it happens and alerts you — crash, overheat, memory leak, hung worker, ECC error.
+
+**One Python file. Zero dependencies. [20 notification channels](#supported-notification-channels).**
 
 ```bash
 pip install gpuwatch
@@ -16,9 +18,9 @@ export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
 gpu-monitor
 ```
 
-That's it. You're protected.
+Three lines. You're covered.
 
-**[Star this repo](https://github.com/reacher-z/gpu-monitor)** if it saves your next training run — stars help other ML researchers find the tool.
+⭐ **[Star it](https://github.com/reacher-z/gpu-monitor)** if it saves your next run — helps other ML engineers find the tool.
 
 ---
 
