@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "gpu-monitor"
+version = "0.3.0"
+description = "Lightweight NVIDIA GPU monitor with Slack, Discord, Telegram, WeCom, Feishu, DingTalk, Bark, OpenClaw alerts and Prometheus metrics"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+keywords = [
+    "gpu", "nvidia", "monitoring", "slack", "discord", "telegram",
+    "prometheus", "pytorch", "deep-learning", "openclaw"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Monitoring",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = []
+
+[project.scripts]
+gpu-monitor = "gpu_monitor:main"
+
+[project.urls]
+Homepage = "https://github.com/reacher-z/gpu-monitor"
+Repository = "https://github.com/reacher-z/gpu-monitor"
+"Bug Tracker" = "https://github.com/reacher-z/gpu-monitor/issues"
+
+[tool.setuptools]
+py-modules = ["gpu_monitor"]

@@ -39,6 +39,14 @@ Configure one or more — only channels with credentials set will be used.
 ## Quick Start
 
 ```bash
+# Install (pip, no dependencies)
+pip install gpu-monitor
+
+# Or just grab the single file
+curl -O https://raw.githubusercontent.com/reacher-z/gpu-monitor/main/gpu_monitor.py
+```
+
+```bash
 # Slack only
 export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
 python gpu_monitor.py
