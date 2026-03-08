@@ -28,6 +28,10 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 | **Email** | SMTP host, credentials, recipient |
 | **SMS** | Twilio account SID, auth token, phone numbers |
 | **iMessage** | macOS only, recipient phone/email |
+| **WeCom (企业微信)** | Webhook URL |
+| **Feishu (飞书)** | Webhook URL |
+| **DingTalk (钉钉)** | Webhook URL |
+| **Bark** | Bark server URL (self-hosted or api.day.app) |
 
 Configure one or more — only channels with credentials set will be used.
 
@@ -119,6 +123,30 @@ bash start.sh status    # check if running
 |----------|-------------|
 | `IMESSAGE_TO` | Recipient phone/email, comma-separated |
 
+### WeCom (企业微信)
+
+| Variable | Description |
+|----------|-------------|
+| `WECOM_WEBHOOK_URL` | WeCom group bot webhook URL |
+
+### Feishu (飞书 / Lark)
+
+| Variable | Description |
+|----------|-------------|
+| `FEISHU_WEBHOOK_URL` | Feishu bot webhook URL |
+
+### DingTalk (钉钉)
+
+| Variable | Description |
+|----------|-------------|
+| `DINGTALK_WEBHOOK_URL` | DingTalk group robot webhook URL |
+
+### Bark (iOS push)
+
+| Variable | Description |
+|----------|-------------|
+| `BARK_URL` | Bark server URL, e.g. `https://api.day.app/YOUR_KEY` |
+
 ## Prometheus Metrics
 
 When `WEB_PORT` is set, a `/metrics` endpoint is available for Prometheus scraping:
@@ -176,3 +204,22 @@ Deploy to each machine — each gets an auto-assigned color in Slack/Discord and
 1. Message [@BotFather](https://t.me/BotFather) → `/newbot`
 2. Copy the token → `TELEGRAM_BOT_TOKEN`
 3. Send a message to your bot, then visit `https://api.telegram.org/bot<TOKEN>/getUpdates` to get `TELEGRAM_CHAT_ID`
+
+## Setting Up Chinese Notification Channels
+
+### WeCom (企业微信)
+1. Open WeCom → Group Chat → Add Group Robot
+2. Copy the webhook URL → `WECOM_WEBHOOK_URL`
+
+### Feishu (飞书 / Lark)
+1. Open Feishu group → Settings → Bots → Add Bot → Custom Bot
+2. Copy the webhook URL → `FEISHU_WEBHOOK_URL`
+
+### DingTalk (钉钉)
+1. Open DingTalk group → Group Settings → Bots → Add Robot → Custom
+2. Set keyword (e.g. `GPU`) in security settings — include it in your messages or set `IDLE_THRESHOLD` message text
+3. Copy the webhook URL → `DINGTALK_WEBHOOK_URL`
+
+### Bark (iOS)
+1. Install [Bark](https://github.com/Finb/Bark) from the App Store
+2. Copy your device URL → `BARK_URL` (e.g. `https://api.day.app/YOUR_DEVICE_KEY`)

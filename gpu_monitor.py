@@ -3,7 +3,8 @@
 Lightweight GPU Monitor with multi-channel notifications and web dashboard.
 
 Supported notification channels (configure via environment variables):
-  Slack, Discord, Telegram, Email (SMTP), SMS (Twilio), iMessage (macOS only)
+  Slack, Discord, Telegram, Email (SMTP), SMS (Twilio), iMessage (macOS only),
+  WeCom (企业微信), Feishu (飞书), DingTalk (钉钉), Bark (iOS push)
 
 Web dashboard:
   Set WEB_PORT=8080 (or any port) to enable the real-time GPU dashboard.
@@ -18,7 +19,6 @@ import json
 import logging
 import logging.handlers
 import os
-import pwd
 import re
 import signal
 import smtplib
@@ -29,7 +29,6 @@ import threading
 import time
 import urllib.parse
 import urllib.request
-from base64 import b64encode
 from datetime import datetime
 from email.mime.text import MIMEText
 
@@ -72,20 +71,24 @@ MACHINE_COLOR = os.environ.get(
 # ---------------------------------------------------------------------------
 # Config — notification channels
 # ---------------------------------------------------------------------------
-SLACK_WEBHOOK_URL   = os.environ.get("SLACK_WEBHOOK_URL",   "")
-DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
-TELEGRAM_BOT_TOKEN  = os.environ.get("TELEGRAM_BOT_TOKEN",  "")
-TELEGRAM_CHAT_ID    = os.environ.get("TELEGRAM_CHAT_ID",    "")
-EMAIL_SMTP_HOST     = os.environ.get("EMAIL_SMTP_HOST",     "")
-EMAIL_SMTP_PORT     = int(os.environ.get("EMAIL_SMTP_PORT", "587"))
-EMAIL_USER          = os.environ.get("EMAIL_USER",          "")
-EMAIL_PASS          = os.environ.get("EMAIL_PASS",          "")
-EMAIL_TO            = os.environ.get("EMAIL_TO",            "")   # comma-separated
-TWILIO_ACCOUNT_SID  = os.environ.get("TWILIO_ACCOUNT_SID",  "")
-TWILIO_AUTH_TOKEN   = os.environ.get("TWILIO_AUTH_TOKEN",   "")
-TWILIO_FROM         = os.environ.get("TWILIO_FROM",         "")
-TWILIO_TO           = os.environ.get("TWILIO_TO",           "")   # comma-separated
-IMESSAGE_TO         = os.environ.get("IMESSAGE_TO",         "")   # comma-separated
+SLACK_WEBHOOK_URL    = os.environ.get("SLACK_WEBHOOK_URL",    "")
+DISCORD_WEBHOOK_URL  = os.environ.get("DISCORD_WEBHOOK_URL",  "")
+TELEGRAM_BOT_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN",   "")
+TELEGRAM_CHAT_ID     = os.environ.get("TELEGRAM_CHAT_ID",     "")
+EMAIL_SMTP_HOST      = os.environ.get("EMAIL_SMTP_HOST",      "")
+EMAIL_SMTP_PORT      = int(os.environ.get("EMAIL_SMTP_PORT",  "587"))
+EMAIL_USER           = os.environ.get("EMAIL_USER",           "")
+EMAIL_PASS           = os.environ.get("EMAIL_PASS",           "")
+EMAIL_TO             = os.environ.get("EMAIL_TO",             "")   # comma-separated
+TWILIO_ACCOUNT_SID   = os.environ.get("TWILIO_ACCOUNT_SID",   "")
+TWILIO_AUTH_TOKEN    = os.environ.get("TWILIO_AUTH_TOKEN",    "")
+TWILIO_FROM          = os.environ.get("TWILIO_FROM",          "")
+TWILIO_TO            = os.environ.get("TWILIO_TO",            "")   # comma-separated
+IMESSAGE_TO          = os.environ.get("IMESSAGE_TO",          "")   # comma-separated
+WECOM_WEBHOOK_URL    = os.environ.get("WECOM_WEBHOOK_URL",    "")  # 企业微信
+FEISHU_WEBHOOK_URL   = os.environ.get("FEISHU_WEBHOOK_URL",   "")  # 飞书
+DINGTALK_WEBHOOK_URL = os.environ.get("DINGTALK_WEBHOOK_URL", "")  # 钉钉
+BARK_URL             = os.environ.get("BARK_URL",             "")  # e.g. https://api.day.app/YOUR_KEY
 
 # GitHub Pages dashboard (optional)
 GITHUB_PAGES_TOKEN = os.environ.get("GITHUB_PAGES_TOKEN", "")
@@ -113,8 +116,9 @@ def _safe_float(s: str) -> float | None:
 def _pid_username(pid: str) -> str:
     """Resolve process owner username from /proc (Linux only)."""
     try:
+        import pwd as _pwd
         uid = os.stat(f"/proc/{pid}").st_uid
-        return pwd.getpwuid(uid).pw_name
+        return _pwd.getpwuid(uid).pw_name
     except Exception:
         return ""
 
@@ -124,10 +128,10 @@ def _pid_username(pid: str) -> str:
 # ---------------------------------------------------------------------------
 def get_gpu_stats() -> list[dict]:
     try:
+        # Core query — always attempted
         r = subprocess.run(
             ["nvidia-smi",
-             "--query-gpu=index,name,utilization.gpu,memory.used,memory.total,"
-             "temperature.gpu,power.draw,clocks.sm",
+             "--query-gpu=index,name,utilization.gpu,memory.used,memory.total,temperature.gpu",
              "--format=csv,noheader,nounits"],
             capture_output=True, text=True, timeout=10,
         )
@@ -151,9 +155,33 @@ def get_gpu_stats() -> list[dict]:
             gpus.append({
                 "idx": idx, "name": p[1], "util": util,
                 "mem_used": mem_used, "mem_total": mem_total, "temp": temp,
-                "power_w":   _safe_float(p[6]) if len(p) > 6 else None,
-                "clock_mhz": _safe_int(p[7])   if len(p) > 7 else None,
+                "power_w":   None,
+                "clock_mhz": None,
             })
+
+        # Optional query — power and clock; skip silently if driver doesn't support it
+        try:
+            r2 = subprocess.run(
+                ["nvidia-smi",
+                 "--query-gpu=index,power.draw,clocks.sm",
+                 "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=10,
+            )
+            if r2.returncode == 0:
+                idx_map = {g["idx"]: g for g in gpus}
+                for line in r2.stdout.strip().split("\n"):
+                    if not line.strip():
+                        continue
+                    p = [x.strip() for x in line.split(",")]
+                    if len(p) < 3:
+                        continue
+                    idx = _safe_int(p[0])
+                    if idx is not None and idx in idx_map:
+                        idx_map[idx]["power_w"]   = _safe_float(p[1])
+                        idx_map[idx]["clock_mhz"] = _safe_int(p[2])
+        except Exception as e:
+            logger.debug(f"Optional power/clock query failed (skipping): {e}")
+
         return gpus
     except Exception as e:
         logger.debug(f"get_gpu_stats failed: {e}")
@@ -331,7 +359,7 @@ def send_sms(plain_text: str) -> bool:
     if not all([TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM, TWILIO_TO]):
         return False
     url   = f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json"
-    creds = b64encode(f"{TWILIO_ACCOUNT_SID}:{TWILIO_AUTH_TOKEN}".encode()).decode()
+    creds = base64.b64encode(f"{TWILIO_ACCOUNT_SID}:{TWILIO_AUTH_TOKEN}".encode()).decode()
     body  = (plain_text[:157] + "...") if len(plain_text) > 160 else plain_text
     ok = True
     for to in TWILIO_TO.split(","):
@@ -392,17 +420,77 @@ def send_imessage(plain_text: str) -> bool:
     return ok
 
 
+def send_wecom(plain_text: str) -> bool:
+    """Send via 企业微信 (WeCom) group bot webhook."""
+    if not WECOM_WEBHOOK_URL:
+        return False
+    payload = {"msgtype": "text", "text": {"content": plain_text}}
+    return _post_json(WECOM_WEBHOOK_URL, payload, ok_statuses=(200,), label="WeCom")
+
+
+def send_feishu(plain_text: str) -> bool:
+    """Send via 飞书 (Feishu/Lark) bot webhook."""
+    if not FEISHU_WEBHOOK_URL:
+        return False
+    payload = {"msg_type": "text", "content": {"text": plain_text}}
+    return _post_json(FEISHU_WEBHOOK_URL, payload, ok_statuses=(200,), label="Feishu")
+
+
+def send_dingtalk(plain_text: str) -> bool:
+    """Send via 钉钉 (DingTalk) group robot webhook."""
+    if not DINGTALK_WEBHOOK_URL:
+        return False
+    payload = {
+        "msgtype": "text",
+        "text": {"content": plain_text},
+        "at": {"isAtAll": False},
+    }
+    return _post_json(DINGTALK_WEBHOOK_URL, payload, ok_statuses=(200,), label="DingTalk")
+
+
+def send_bark(plain_text: str) -> bool:
+    """Send iOS push via Bark (https://github.com/Finb/Bark)."""
+    if not BARK_URL:
+        return False
+    lines = plain_text.strip().splitlines()
+    title = lines[0][:64] if lines else "GPU Monitor"
+    body  = "\n".join(lines[1:])[:256] if len(lines) > 1 else plain_text[:256]
+    url   = BARK_URL.rstrip("/") + "/" + urllib.parse.quote(title, safe="") + "/" + urllib.parse.quote(body, safe="")
+    try:
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.status == 200
+    except Exception as e:
+        logger.error(f"Bark error: {e}")
+        return False
+
+
 def notify(slack_text: str, color: str = "") -> None:
     """Dispatch to all configured notification channels in a background thread."""
     def _dispatch() -> None:
-        plain = _to_plain(slack_text)
-        send_slack(slack_text, color)
-        send_discord(plain, color)
-        send_telegram(plain)
-        send_email(plain)
-        send_sms(plain)
-        send_imessage(plain)
+        try:
+            plain = _to_plain(slack_text)
+            send_slack(slack_text, color)
+            send_discord(plain, color)
+            send_telegram(plain)
+            send_email(plain)
+            send_sms(plain)
+            send_imessage(plain)
+            send_wecom(plain)
+            send_feishu(plain)
+            send_dingtalk(plain)
+            send_bark(plain)
+        except Exception as e:
+            logger.error(f"notify dispatch error: {e}")
     threading.Thread(target=_dispatch, daemon=True).start()
+
+
+# ---------------------------------------------------------------------------
+# Prometheus label sanitization
+# ---------------------------------------------------------------------------
+def _prom_label(s: str) -> str:
+    """Escape string for use as a Prometheus label value."""
+    return str(s).replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
 
 
 # ---------------------------------------------------------------------------
@@ -670,28 +758,29 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
         elif self.path == "/metrics":
             # Prometheus text format — compatible with Grafana, prometheus scrape
             gpus = get_gpu_stats()
+            h = _prom_label(HOSTNAME)
             lines = [
                 "# HELP gpu_utilization_percent GPU utilization %",
                 "# TYPE gpu_utilization_percent gauge",
-            ] + [f'gpu_utilization_percent{{gpu="{g["idx"]}",name="{g["name"]}",host="{HOSTNAME}"}} {g["util"]}' for g in gpus] + [
+            ] + [f'gpu_utilization_percent{{gpu="{g["idx"]}",name="{_prom_label(g["name"])}",host="{h}"}} {g["util"]}' for g in gpus] + [
                 "# HELP gpu_memory_used_mib GPU memory used MiB",
                 "# TYPE gpu_memory_used_mib gauge",
-            ] + [f'gpu_memory_used_mib{{gpu="{g["idx"]}",host="{HOSTNAME}"}} {g["mem_used"]}' for g in gpus] + [
+            ] + [f'gpu_memory_used_mib{{gpu="{g["idx"]}",host="{h}"}} {g["mem_used"]}' for g in gpus] + [
                 "# HELP gpu_memory_total_mib GPU memory total MiB",
                 "# TYPE gpu_memory_total_mib gauge",
-            ] + [f'gpu_memory_total_mib{{gpu="{g["idx"]}",host="{HOSTNAME}"}} {g["mem_total"]}' for g in gpus] + [
+            ] + [f'gpu_memory_total_mib{{gpu="{g["idx"]}",host="{h}"}} {g["mem_total"]}' for g in gpus] + [
                 "# HELP gpu_temperature_celsius GPU temperature",
                 "# TYPE gpu_temperature_celsius gauge",
-            ] + [f'gpu_temperature_celsius{{gpu="{g["idx"]}",host="{HOSTNAME}"}} {g["temp"]}' for g in gpus]
+            ] + [f'gpu_temperature_celsius{{gpu="{g["idx"]}",host="{h}"}} {g["temp"]}' for g in gpus]
             # Optional: power and clocks
             pw = [g for g in gpus if g.get("power_w") is not None]
             if pw:
                 lines += ["# HELP gpu_power_watts GPU power draw watts", "# TYPE gpu_power_watts gauge"]
-                lines += [f'gpu_power_watts{{gpu="{g["idx"]}",host="{HOSTNAME}"}} {g["power_w"]}' for g in pw]
+                lines += [f'gpu_power_watts{{gpu="{g["idx"]}",host="{h}"}} {g["power_w"]}' for g in pw]
             cl = [g for g in gpus if g.get("clock_mhz") is not None]
             if cl:
                 lines += ["# HELP gpu_clock_sm_mhz GPU SM clock MHz", "# TYPE gpu_clock_sm_mhz gauge"]
-                lines += [f'gpu_clock_sm_mhz{{gpu="{g["idx"]}",host="{HOSTNAME}"}} {g["clock_mhz"]}' for g in cl]
+                lines += [f'gpu_clock_sm_mhz{{gpu="{g["idx"]}",host="{h}"}} {g["clock_mhz"]}' for g in cl]
             body = ("\n".join(lines) + "\n").encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
@@ -737,7 +826,7 @@ def _gh_update_file(token: str, repo: str, path: str, content: bytes, message: s
         else:
             logger.debug(f"GitHub GET error {e.code}: {e}")
             return False
-    payload: dict = {"message": message, "content": b64encode(content).decode()}
+    payload: dict = {"message": message, "content": base64.b64encode(content).decode()}
     if sha:
         payload["sha"] = sha
     try:
@@ -810,7 +899,7 @@ def _update_index(token: str, repo: str) -> None:
         machines.append(HOSTNAME)
         payload: dict = {
             "message": f"index: add {HOSTNAME}",
-            "content": b64encode(json.dumps({"machines": machines}).encode()).decode(),
+            "content": base64.b64encode(json.dumps({"machines": machines}).encode()).decode(),
         }
         if sha:
             payload["sha"] = sha
@@ -841,8 +930,8 @@ def monitor():
     last_status_time = 0.0
     was_idle         = False
     partial_alerted  = False
-    # Track processes from previous iteration for crash detection
-    prev_proc_names: set[str] = set()
+    # Track PIDs from previous iteration for crash detection
+    prev_pids: set[str] = set()
 
     channels = [c for c, v in [
         ("Slack",    SLACK_WEBHOOK_URL),
@@ -851,6 +940,10 @@ def monitor():
         ("Email",    EMAIL_SMTP_HOST and EMAIL_TO),
         ("SMS",      TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM and TWILIO_TO),
         ("iMessage", IMESSAGE_TO and sys.platform == "darwin"),
+        ("WeCom",    WECOM_WEBHOOK_URL),
+        ("Feishu",   FEISHU_WEBHOOK_URL),
+        ("DingTalk", DINGTALK_WEBHOOK_URL),
+        ("Bark",     BARK_URL),
     ] if v]
 
     logger.info(
@@ -908,20 +1001,25 @@ def monitor():
         if len(idle_gpus) == len(gpus):
             if idle_since is None:
                 idle_since = now
-                # Just went idle — if processes were running, alert immediately (possible crash)
-                if not was_idle and prev_proc_names and _cooldown_ok(last_alert_time, now):
-                    names_str = ", ".join(sorted(prev_proc_names)[:3])
-                    logger.warning(f"GPUs went idle; last processes: {names_str}")
-                    notify(
-                        f":x: *GPUs went idle* — was running: {names_str} | "
-                        + format_status(gpus, get_procs()),
-                        color="#e01e5a",
-                    )
-                    last_alert_time = now
+                # Just went idle — check if actual PIDs disappeared (real crash vs normal finish)
+                if not was_idle and _cooldown_ok(last_alert_time, now):
+                    current_procs = get_procs()
+                    current_pids = {p["pid"] for plist in current_procs.values() for p in plist}
+                    vanished = prev_pids - current_pids
+                    if vanished and prev_pids:
+                        # Look up names of vanished PIDs from previous proc snapshot
+                        # (they're gone now, so use prev_pids set directly; names not available)
+                        logger.warning(f"GPUs went idle; vanished PIDs: {vanished}")
+                        notify(
+                            f":x: *GPUs went idle* — processes exited: {', '.join(sorted(vanished))} | "
+                            + format_status(gpus, current_procs),
+                            color="#e01e5a",
+                        )
+                        last_alert_time = now
 
             active_since    = None
             partial_alerted = False
-            prev_proc_names = set()
+            prev_pids       = set()
 
             idle_min = (now - idle_since) / 60
             if idle_min >= IDLE_MINUTES:
@@ -936,15 +1034,6 @@ def monitor():
             was_idle = True
 
         else:
-            # Update tracked process names for crash detection
-            cur_procs = get_procs()
-            prev_proc_names = {
-                p["name"] for plist in cur_procs.values() for p in plist
-            }
-
-            if not idle_gpus:
-                partial_alerted = False
-
             if was_idle:
                 logger.info("GPUs active again")
                 notify(
@@ -964,11 +1053,18 @@ def monitor():
                 partial_alerted = True
                 last_alert_time = now
 
+            if not idle_gpus:
+                partial_alerted = False
+
             # Only start active_since when fully busy (not partial)
             if not idle_gpus and active_since is None:
                 active_since = now
             idle_since = None
             was_idle   = False
+
+            # Update tracked PIDs for crash detection
+            cur_procs = get_procs()
+            prev_pids = {p["pid"] for plist in cur_procs.values() for p in plist}
 
         time.sleep(CHECK_INTERVAL)
 

@@ -213,8 +213,8 @@ main{padding:14px 20px 32px;display:flex;flex-direction:column;gap:12px}
 }
 
 /* Pills */
-.pills{display:flex;gap:6px;margin-bottom:10px}
-.pill{flex:1;background:var(--surface2);border-radius:9px;padding:7px 6px;text-align:center}
+.pills{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap}
+.pill{flex:1;min-width:56px;background:var(--surface2);border-radius:9px;padding:6px 4px;text-align:center}
 .pill-val{font-size:15px;font-weight:700;line-height:1;margin-bottom:3px}
 .pill-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
 
@@ -281,6 +281,7 @@ main{padding:14px 20px 32px;display:flex;flex-direction:column;gap:12px}
   <div class="g-stat"><div class="g-val" id="g-util">—</div><div class="g-label">Avg Util</div></div>
   <div class="g-stat"><div class="g-val" id="g-mem">—</div><div class="g-label">Memory</div></div>
   <div class="g-stat"><div class="g-val" id="g-temp">—</div><div class="g-label">Avg Temp</div></div>
+  <div class="g-stat" id="g-power-stat" style="display:none"><div class="g-val" id="g-power">—</div><div class="g-label">Total Power</div></div>
   <div class="g-stat"><div class="g-val" id="g-procs">—</div><div class="g-label">Processes</div></div>
 </div>
 
@@ -348,7 +349,7 @@ function renderGpu(g, procs, accent) {
   const pl = procs[String(g.idx)] || [];
   const accentFade = accent + '22';
   const procsHtml = pl.length
-    ? pl.map(p => `<div class="proc"><span class="proc-name">${esc(p.name)}${p.user ? ` <span style="color:var(--muted);font-size:9px">[${esc(p.user)}]</span>` : ''}</span><span class="proc-mem">${p.mem} MiB</span></div>`).join('')
+    ? pl.map(p => `<div class="proc"><span class="proc-name">${esc(p.name)}${p.user ? ` <span style="color:var(--muted);font-size:10px;opacity:0.7">[${esc(p.user)}]</span>` : ''}</span><span class="proc-mem">${p.mem} MiB</span></div>`).join('')
     : '<span class="no-proc">idle</span>';
 
   return `<div class="gpu-cell">
@@ -369,6 +370,7 @@ function renderGpu(g, procs, accent) {
       <div class="pill-val" style="color:${cv(tempCls(g.temp))}">${g.temp}°</div>
       <div class="pill-lbl">Temp</div>
     </div>
+    ${g.clock_mhz != null ? `<div class="pill"><div class="pill-val" style="color:var(--muted)">${g.clock_mhz}<span style="font-size:10px">MHz</span></div><div class="pill-lbl">Clock</div></div>` : ''}
     ${g.power_w != null ? `<div class="pill"><div class="pill-val" style="color:var(--muted)">${g.power_w}W</div><div class="pill-lbl">Power</div></div>` : ''}
   </div>
   <div class="bar-row">
@@ -415,7 +417,7 @@ async function load() {
 
     if (!machines.length) {
       document.getElementById('main').innerHTML =
-        '<div class="err-msg">No machines found.<br>Start gpu_monitor.py with GITHUB_PAGES_REPO set.</div>';
+        '<div class="err-msg">No machines found.<br>Start gpu_monitor.py with GITHUB_PAGES_REPO set.<br><small style="color:var(--muted)">Test with: python gpu_monitor.py --once</small></div>';
       return;
     }
 
@@ -430,6 +432,8 @@ async function load() {
     const totalProcs   = data.reduce((s,d) => s + Object.values(d.procs).flat().length, 0);
     const avgUtil      = allUtils.length ? allUtils.reduce((a,b)=>a+b,0)/allUtils.length : 0;
     const avgTemp      = allTemps.length ? allTemps.reduce((a,b)=>a+b,0)/allTemps.length : 0;
+    const totalPowerW  = data.flatMap(d => d.gpus).filter(g => g.power_w != null).reduce((s,g)=>s+g.power_w,0);
+    const hasPower     = data.flatMap(d => d.gpus).some(g => g.power_w != null);
 
     document.getElementById('global-bar').style.display = 'flex';
     document.getElementById('g-machines').textContent = data.length;
@@ -444,6 +448,11 @@ async function load() {
     const tEl = document.getElementById('g-temp');
     tEl.textContent = avgTemp.toFixed(0) + '°C';
     tEl.style.color = cv(tempCls(avgTemp));
+
+    if (hasPower) {
+      document.getElementById('g-power-stat').style.display = '';
+      document.getElementById('g-power').textContent = totalPowerW.toFixed(0) + 'W';
+    }
 
     document.getElementById('g-procs').textContent  = totalProcs;
     document.getElementById('main').innerHTML        = data.map(renderMachine).join('');
