@@ -432,34 +432,6 @@ main{padding:14px 20px 0;display:flex;flex-direction:column;gap:12px;flex:1}
 .btn-secondary:hover{border-color:var(--blue);color:var(--blue);background:rgba(64,200,255,.05)}
 [data-theme="light"] .btn-secondary:hover{background:rgba(79,70,229,.05)}
 
-/* Star + social proof row */
-.star-row {
-  display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
-  margin-bottom:4px;
-}
-.star-badge {
-  display:inline-flex;align-items:center;gap:0;
-  border-radius:6px;overflow:hidden;
-  border:1px solid var(--border);
-  font-size:10px;font-weight:700;text-decoration:none;
-  transition:border-color .2s,transform .15s;
-}
-.star-badge:hover{border-color:var(--amber);transform:translateY(-1px)}
-.star-badge-left {
-  background:var(--surface2);color:var(--text);
-  padding:5px 9px;display:flex;align-items:center;gap:5px;
-  border-right:1px solid var(--border);
-}
-.star-badge-right {
-  background:var(--surface);color:var(--amber);
-  padding:5px 9px;
-}
-.used-in-prod {
-  font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;
-}
-.prod-dot {
-  width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;
-}
 
 /* Author credit — prominent pill */
 .hero-author {
@@ -820,16 +792,6 @@ footer a:hover{color:var(--blue)}
         </a>
       </div>
 
-      <!-- Social proof row -->
-      <div class="star-row">
-        <a class="star-badge" href="https://github.com/reacher-z/gpu-monitor/stargazers" target="_blank" rel="noopener" aria-label="GitHub stars for gpu-monitor">
-          <span class="star-badge-left">
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-            reacher-z / gpu-monitor
-          </span>
-          <span class="star-badge-right">★ Star</span>
-        </a>
-      </div>
 
       <!-- Author credit — prominent -->
       <div class="hero-author">
