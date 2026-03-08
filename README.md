@@ -42,7 +42,7 @@ Three lines. You're covered.
 - [Multi-Machine Setup](#multi-machine-setup)
 - [Setting Up Specific Channels](#setting-up-specific-channels)
   - [Telegram](#setting-up-telegram)
-  - [Chinese channels (WeCom, Feishu, DingTalk, Bark)](#setting-up-chinese-notification-channels)
+  - [WeCom, Feishu, DingTalk, Bark](#setting-up-wecom-feishu-dingtalk-bark)
   - [ntfy](#setting-up-ntfy)
   - [Apprise (80+ extra services)](#setting-up-apprise-80-extra-services)
   - [OpenClaw](#setting-up-openclaw)
@@ -601,7 +601,7 @@ Deploy to each machine — each gets an auto-assigned color in Slack/Discord and
 2. Copy the token → `TELEGRAM_BOT_TOKEN`
 3. Send a message to your bot, then visit `https://api.telegram.org/bot<TOKEN>/getUpdates` to find your `TELEGRAM_CHAT_ID`
 
-### Setting Up Chinese Notification Channels
+### Setting Up WeCom, Feishu, DingTalk, Bark
 
 **WeCom (企业微信)**
 1. Open WeCom → Group Chat → Add Group Robot
