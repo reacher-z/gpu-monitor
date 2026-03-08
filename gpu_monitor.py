@@ -1096,6 +1096,7 @@ def push_stats_to_github(gpus: list[dict], procs: dict) -> None:
             "color":    MACHINE_COLOR,
             "ts":       int(time.time()),
             "time":     datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "version":  __version__,
             "gpus":     gpus,
             "procs":    {str(k): v for k, v in procs.items()},
         }

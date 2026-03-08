@@ -316,6 +316,13 @@ function toggleTheme() {
   applyTheme(matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 })();
 
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 't' || e.key === 'T') toggleTheme();
+  if (e.key === 'r' || e.key === 'R') load();
+});
+
 // ── Color helpers ─────────────────────────────────────────────────────────────
 const utilCls = p => p < 40 ? 'green' : p < 70 ? 'amber' : 'red';
 const memCls  = p => p < 60 ? 'blue'  : p < 80 ? 'amber' : 'red';
@@ -397,7 +404,8 @@ function renderMachine(d) {
     <span class="machine-dot" style="background:${accent};color:${accent}"></span>
     <span class="machine-name">${esc(d.hostname)}</span>
     <span class="badge ${status}">${status}</span>
-    <span class="machine-time">updated ${relTime(d.ts)}</span>
+    ${d.version ? `<span style="font-size:10px;color:var(--muted);opacity:.6">v${esc(d.version)}</span>` : ''}
+    <span class="machine-time" data-ts="${d.ts}">updated ${relTime(d.ts)}</span>
   </div>
   <div class="gpu-grid">${gpuHtml || '<div style="padding:16px;color:var(--muted)">No GPUs found</div>'}</div>
 </div>`;
@@ -417,7 +425,7 @@ async function load() {
 
     if (!machines.length) {
       document.getElementById('main').innerHTML =
-        '<div class="err-msg">No machines found.<br>Start gpu_monitor.py with GITHUB_PAGES_REPO set.<br><small style="color:var(--muted)">Test with: python gpu_monitor.py --once</small></div>';
+        '<div class="err-msg">No machines found.<br>Start gpu_monitor.py with <code>GITHUB_PAGES_REPO</code> set.<br><small style="color:var(--muted)">Debug: <code>python gpu_monitor.py --once</code> &nbsp;|&nbsp; <code>python gpu_monitor.py --channels</code></small></div>';
       return;
     }
 
