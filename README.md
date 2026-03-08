@@ -316,6 +316,8 @@ scrape_configs:
       - targets: ['your-server:8080']
 ```
 
+A pre-built **Grafana dashboard** is included at [`grafana/dashboard.json`](grafana/dashboard.json) — import it in Grafana via Dashboards → Import → Upload JSON. It includes utilization, memory, temperature, and power panels with host and GPU variable filters.
+
 ## GitHub Pages Dashboard
 
 Real-time GPU dashboard hosted on GitHub Pages — no server needed.
