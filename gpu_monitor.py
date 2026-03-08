@@ -128,6 +128,11 @@ INFLUXDB_URL    = os.environ.get("INFLUXDB_URL",    "")  # e.g. http://influxdb:
 INFLUXDB_TOKEN  = os.environ.get("INFLUXDB_TOKEN",  "")  # API token (v2) or "user:pass" (v1)
 INFLUXDB_BUCKET = os.environ.get("INFLUXDB_BUCKET", "gpu_metrics")  # v2 bucket or "db/rp"
 INFLUXDB_ORG    = os.environ.get("INFLUXDB_ORG",    "")  # v2 org name
+# PagerDuty Events API v2 — on-call alerting
+PAGERDUTY_INTEGRATION_KEY = os.environ.get("PAGERDUTY_INTEGRATION_KEY", "")  # 32-char routing key
+# Datadog DogStatsD — send GPU metrics to Datadog agent
+DATADOG_STATSD_HOST = os.environ.get("DATADOG_STATSD_HOST", "")  # e.g. localhost or datadog-agent
+DATADOG_STATSD_PORT = int(os.environ.get("DATADOG_STATSD_PORT", "8125"))
 
 # GitHub Pages dashboard (optional)
 GITHUB_PAGES_TOKEN = os.environ.get("GITHUB_PAGES_TOKEN", "")
@@ -765,6 +770,59 @@ def send_openclaw(plain_text: str) -> bool:
         return False
 
 
+def send_pagerduty(plain_text: str) -> bool:
+    """Send alert to PagerDuty via Events API v2."""
+    if not PAGERDUTY_INTEGRATION_KEY:
+        return False
+    payload = {
+        "routing_key":  PAGERDUTY_INTEGRATION_KEY,
+        "event_action": "trigger",
+        "payload": {
+            "summary":  plain_text[:1024],
+            "severity": "warning",
+            "source":   HOSTNAME,
+            "custom_details": {"host": HOSTNAME},
+        },
+    }
+    return _post_json(
+        "https://events.pagerduty.com/v2/enqueue",
+        payload,
+        ok_statuses=(200, 202),
+        label="PagerDuty",
+    )
+
+
+def push_datadog(gpus: list[dict]) -> None:
+    """Send GPU metrics to Datadog via DogStatsD (UDP)."""
+    if not DATADOG_STATSD_HOST:
+        return
+    try:
+        import socket as _sock
+        sock = _sock.socket(_sock.AF_INET, _sock.SOCK_DGRAM)
+        h_tag = f"host:{HOSTNAME}"
+        for g in gpus:
+            name_tag = f"gpu_name:{g['name'].replace(' ', '_')}"
+            tags = f"gpu:{g['idx']},{name_tag},{h_tag}"
+            mp = round(g["mem_used"] / g["mem_total"] * 100, 1) if g["mem_total"] else 0
+            metrics: dict[str, float | int] = {
+                "gpu.utilization":         g["util"],
+                "gpu.memory.used_mib":     g["mem_used"],
+                "gpu.memory.total_mib":    g["mem_total"],
+                "gpu.memory.utilization":  mp,
+                "gpu.temperature":         g["temp"],
+            }
+            if g.get("power_w")      is not None: metrics["gpu.power_w"]    = g["power_w"]
+            if g.get("fan_speed")    is not None: metrics["gpu.fan_speed"]  = g["fan_speed"]
+            if g.get("clock_mhz")    is not None: metrics["gpu.clock_mhz"]  = g["clock_mhz"]
+            if g.get("ecc_errors")   is not None: metrics["gpu.ecc_errors"] = g["ecc_errors"]
+            for name, val in metrics.items():
+                msg = f"{name}:{val}|g|#{tags}".encode()
+                sock.sendto(msg, (DATADOG_STATSD_HOST, DATADOG_STATSD_PORT))
+        sock.close()
+    except Exception as e:
+        logger.warning(f"Datadog StatsD failed: {e}")
+
+
 def push_influxdb(gpus: list[dict]) -> None:
     """Write GPU metrics to InfluxDB in line protocol format (v1 and v2 compatible)."""
     if not INFLUXDB_URL:
@@ -837,6 +895,7 @@ def notify(slack_text: str, color: str = "") -> None:
             send_gotify(plain)
             send_ntfy(plain)
             send_openclaw(plain)
+            send_pagerduty(plain)
             if ALERT_WEBHOOK_URL:
                 try:
                     body = json.dumps({
@@ -1445,6 +1504,7 @@ def monitor():
         ("Google Chat",  GOOGLE_CHAT_WEBHOOK_URL),
         ("Zulip",        ZULIP_SITE and ZULIP_EMAIL and ZULIP_API_KEY),
         ("OpenClaw",     OPENCLAW_WEBHOOK_URL),
+        ("PagerDuty",    PAGERDUTY_INTEGRATION_KEY),
     ] if v]
 
     logger.info(
@@ -1485,6 +1545,9 @@ def monitor():
 
         # Push to InfluxDB (every check interval)
         push_influxdb(gpus)
+
+        # Push to Datadog via DogStatsD
+        push_datadog(gpus)
 
         # Update web dashboard sparkline history
         for g in gpus:
@@ -1720,7 +1783,8 @@ def main():
             ("Teams",        TEAMS_WEBHOOK_URL),
             ("Google Chat",  GOOGLE_CHAT_WEBHOOK_URL),
             ("Zulip",        ZULIP_SITE and ZULIP_EMAIL and ZULIP_API_KEY),
-            ("OpenClaw",        OPENCLAW_WEBHOOK_URL),
+            ("OpenClaw",       OPENCLAW_WEBHOOK_URL),
+            ("PagerDuty",      PAGERDUTY_INTEGRATION_KEY),
             ("Alert Webhook",  ALERT_WEBHOOK_URL),
         ]
         active   = [n for n, v in all_channels if v]
@@ -1822,7 +1886,8 @@ def main():
             ("Pushover", bool(PUSHOVER_TOKEN and PUSHOVER_USER)),
             ("Gotify",   bool(GOTIFY_URL and GOTIFY_TOKEN)),
             ("ntfy",     bool(NTFY_URL)),
-            ("OpenClaw", bool(OPENCLAW_WEBHOOK_URL)),
+            ("OpenClaw",   bool(OPENCLAW_WEBHOOK_URL)),
+            ("PagerDuty",  bool(PAGERDUTY_INTEGRATION_KEY)),
         ]
         active   = [n for n, ok in channels if ok]
         inactive = [n for n, ok in channels if not ok]

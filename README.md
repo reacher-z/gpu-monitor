@@ -19,15 +19,16 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 - **Per-machine color** — auto-assigned color bar for multi-machine setups
 - **Uptime tracking** — shows `up 2h30m` or `idle 15min` in status
 - **Prometheus `/metrics`** — expose GPU stats for Grafana/alertmanager (requires `WEB_PORT`)
-- **19 notification channels** — Slack, Discord, Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTalk, Bark, Rocket.Chat, ntfy, Gotify, Pushover, Mattermost, Teams, Google Chat, Zulip, OpenClaw (+ **80+ more via [Apprise](https://github.com/caronc/apprise)**)
+- **20 notification channels** — Slack, Discord, Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTalk, Bark, Rocket.Chat, ntfy, Gotify, Pushover, Mattermost, Teams, Google Chat, Zulip, OpenClaw, PagerDuty (+ **80+ more via [Apprise](https://github.com/caronc/apprise)**)
 - **Memory leak detection** — alert when GPU memory grows unexpectedly without process changes
 - **Temperature alerting** — `GPU_TEMP_WARN` / `GPU_TEMP_CRIT` thresholds, no Prometheus required
 - **Power throttle alert** — notify when GPU power draw hits 95% of its TDP limit
 - **ECC error detection** — alert on uncorrected volatile ECC errors (A100/H100/V100); prevents silent training corruption
 - **Fan speed** — `gpu_fan_speed_percent` Prometheus metric for thermal correlation
-- **Alertmanager receiver** — route all Prometheus alerts to 19+ channels via `POST /webhook`
+- **Alertmanager receiver** — route all Prometheus alerts to 20+ channels via `POST /webhook`
 - **`ALERT_WEBHOOK_URL`** — POST JSON to any HTTP endpoint on every alert (CI/CD, PagerDuty, custom integrations)
 - **InfluxDB export** — write GPU metrics in line protocol format to InfluxDB v1/v2 (`INFLUXDB_URL`)
+- **Datadog export** — send GPU metrics to Datadog via DogStatsD (`DATADOG_STATSD_HOST`)
 - **`--watch`** — live color terminal table (like a lite nvtop): `gpu_monitor.py --watch 2`
 - **Web dashboard sparklines** — `--web PORT` now shows utilization history sparklines per GPU card
 - **`--test-notify`** — verify all configured channels with one command
@@ -40,11 +41,17 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 | | gpu-monitor | gpustat | nvitop | wandb |
 |---|---|---|---|---|
 | Background alerts | ✅ | ❌ | ❌ | ❌ |
-| Multi-channel notifications | ✅ 19 + 80 via Apprise | ❌ | ❌ | Slack only |
+| Multi-channel notifications | ✅ 20 + 80 via Apprise | ❌ | ❌ | Slack only |
 | Zero dependencies | ✅ stdlib only | ❌ | ❌ | ❌ |
 | Single file deploy | ✅ | ❌ | ❌ | ❌ |
-| Prometheus `/metrics` | ✅ | ❌ | ✅ | ❌ |
+| Prometheus `/metrics` | ✅ 11 metrics | ❌ | ✅ | ❌ |
+| InfluxDB / Datadog export | ✅ | ❌ | ❌ | ❌ |
 | Crash detection | ✅ | ❌ | ❌ | ❌ |
+| Temperature alerting | ✅ | ❌ | ❌ | ❌ |
+| ECC error detection | ✅ | ❌ | ❌ | ❌ |
+| Alertmanager receiver | ✅ | ❌ | ❌ | ❌ |
+| Live terminal view | ✅ `--watch` | ✅ | ✅ | ❌ |
+| Kubernetes DaemonSet | ✅ | ❌ | ❌ | ❌ |
 | Multi-machine dashboard | ✅ GitHub Pages | ❌ | ❌ | ✅ paid |
 
 **gpustat** and **nvitop** are great interactive tools — gpu-monitor fills the complementary role of *unattended background monitoring with instant alerts*.
@@ -72,6 +79,7 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 | **Mattermost** | Incoming webhook URL |
 | **Microsoft Teams** | Teams incoming webhook URL |
 | **OpenClaw** | Webhook URL + secret — routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, and [20+ more](https://openclaw.ai) |
+| **PagerDuty** | Integration key (Events API v2) — on-call alerting |
 
 Configure one or more — only channels with credentials set will be used.
 
@@ -333,6 +341,23 @@ Not configured:           Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTal
 |----------|-------------|
 | `OPENCLAW_WEBHOOK_URL` | Your OpenClaw webhook URL, e.g. `http://your-host:18789/hooks/wake` |
 | `OPENCLAW_WEBHOOK_SECRET` | Bearer token (from OpenClaw settings), if auth is enabled |
+
+### PagerDuty
+
+| Variable | Description |
+|----------|-------------|
+| `PAGERDUTY_INTEGRATION_KEY` | 32-character Events API v2 integration key from PagerDuty |
+
+Create an integration in PagerDuty: Service → Integrations → Add integration → Events API v2. Copy the integration key.
+
+### Datadog
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATADOG_STATSD_HOST` | — | Hostname of your Datadog agent (enables DogStatsD export) |
+| `DATADOG_STATSD_PORT` | `8125` | DogStatsD port |
+
+GPU metrics are sent as DogStatsD gauges (`gpu.utilization`, `gpu.temperature`, `gpu.power_w`, etc.) tagged with `gpu`, `host`, and `gpu_name`. Ensure your Datadog agent has `dogstatsd_non_local_traffic: true` set if running in Docker.
 
 ## Prometheus Metrics
 
