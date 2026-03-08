@@ -5,7 +5,7 @@ build-backend = "setuptools.backends.legacy:build"
 [project]
 name = "gpu-monitor"
 version = "0.3.0"
-description = "Lightweight NVIDIA GPU monitor — 18 notification channels (Slack, Discord, Telegram, ntfy, Teams, Zulip, OpenClaw, and more), Prometheus metrics, crash detection, GitHub Pages dashboard"
+description = "Lightweight NVIDIA GPU monitor — 19 notification channels (Slack, Discord, Telegram, ntfy, Teams, Rocket.Chat, Zulip, OpenClaw, and more), Prometheus metrics, crash detection, GitHub Pages dashboard"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"

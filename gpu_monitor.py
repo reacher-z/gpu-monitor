@@ -6,7 +6,7 @@ Supported notification channels (configure via environment variables):
   Slack, Discord, Telegram, Email (SMTP), SMS (Twilio), iMessage (macOS only),
   WeCom (企业微信), Feishu (飞书), DingTalk (钉钉), Bark (iOS push),
   ntfy (self-hosted or ntfy.sh), Gotify (self-hosted), Pushover, Microsoft Teams, Mattermost,
-  Google Chat, Zulip,
+  Google Chat, Zulip, Rocket.Chat,
   OpenClaw (routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, etc.)
 
 Web dashboard:
@@ -110,6 +110,7 @@ ZULIP_EMAIL    = os.environ.get("ZULIP_EMAIL",    "")  # bot email
 ZULIP_API_KEY  = os.environ.get("ZULIP_API_KEY",  "")  # bot API key
 ZULIP_STREAM   = os.environ.get("ZULIP_STREAM",   "general")
 ZULIP_TOPIC    = os.environ.get("ZULIP_TOPIC",    "GPU Monitor")
+ROCKETCHAT_WEBHOOK_URL = os.environ.get("ROCKETCHAT_WEBHOOK_URL", "")  # Rocket.Chat incoming webhook URL
 
 # GitHub Pages dashboard (optional)
 GITHUB_PAGES_TOKEN = os.environ.get("GITHUB_PAGES_TOKEN", "")
@@ -486,6 +487,17 @@ def send_bark(plain_text: str) -> bool:
         return False
 
 
+def send_rocketchat(plain_text: str) -> bool:
+    """Send via Rocket.Chat incoming webhook.
+
+    Create a webhook in Rocket.Chat: Administration → Integrations → New Integration → Incoming WebHook.
+    Docs: https://docs.rocket.chat/use-rocket.chat/workspace-administration/integrations
+    """
+    if not ROCKETCHAT_WEBHOOK_URL:
+        return False
+    return _post_json(ROCKETCHAT_WEBHOOK_URL, {"text": plain_text}, label="Rocket.Chat")
+
+
 def send_google_chat(plain_text: str) -> bool:
     """Send via Google Chat space webhook.
 
@@ -695,6 +707,7 @@ def notify(slack_text: str, color: str = "") -> None:
             send_feishu(plain)
             send_dingtalk(plain)
             send_bark(plain)
+            send_rocketchat(plain)
             send_google_chat(plain)
             send_zulip(plain)
             send_mattermost(plain)
@@ -1167,6 +1180,7 @@ def monitor():
         ("Feishu",       FEISHU_WEBHOOK_URL),
         ("DingTalk",     DINGTALK_WEBHOOK_URL),
         ("Bark",         BARK_URL),
+        ("Rocket.Chat",  ROCKETCHAT_WEBHOOK_URL),
         ("ntfy",         NTFY_URL),
         ("Gotify",       GOTIFY_URL and GOTIFY_TOKEN),
         ("Pushover",     PUSHOVER_TOKEN and PUSHOVER_USER),
@@ -1322,10 +1336,39 @@ def main():
     parser = argparse.ArgumentParser(description="Lightweight GPU Monitor")
     parser.add_argument("--version",     action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--once",        action="store_true", help="Print status and exit")
+    parser.add_argument("--channels",    action="store_true", help="List configured notification channels and exit")
     parser.add_argument("--test-notify", action="store_true", help="Send a test notification to all configured channels and exit")
     parser.add_argument("--web",  type=int, metavar="PORT", default=0,
                         help="Start web dashboard on PORT (overrides WEB_PORT env var)")
     args = parser.parse_args()
+
+    if args.channels:
+        all_channels = [
+            ("Slack",        SLACK_WEBHOOK_URL),
+            ("Discord",      DISCORD_WEBHOOK_URL),
+            ("Telegram",     TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID),
+            ("Email",        EMAIL_SMTP_HOST and EMAIL_TO),
+            ("SMS",          TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_FROM and TWILIO_TO),
+            ("iMessage",     IMESSAGE_TO and sys.platform == "darwin"),
+            ("WeCom",        WECOM_WEBHOOK_URL),
+            ("Feishu",       FEISHU_WEBHOOK_URL),
+            ("DingTalk",     DINGTALK_WEBHOOK_URL),
+            ("Bark",         BARK_URL),
+            ("Rocket.Chat",  ROCKETCHAT_WEBHOOK_URL),
+            ("ntfy",         NTFY_URL),
+            ("Gotify",       GOTIFY_URL and GOTIFY_TOKEN),
+            ("Pushover",     PUSHOVER_TOKEN and PUSHOVER_USER),
+            ("Mattermost",   MATTERMOST_WEBHOOK_URL),
+            ("Teams",        TEAMS_WEBHOOK_URL),
+            ("Google Chat",  GOOGLE_CHAT_WEBHOOK_URL),
+            ("Zulip",        ZULIP_SITE and ZULIP_EMAIL and ZULIP_API_KEY),
+            ("OpenClaw",     OPENCLAW_WEBHOOK_URL),
+        ]
+        active   = [n for n, v in all_channels if v]
+        inactive = [n for n, v in all_channels if not v]
+        print(f"Active   ({len(active)}): {', '.join(active) or 'none'}")
+        print(f"Inactive ({len(inactive)}): {', '.join(inactive)}")
+        sys.exit(0)
 
     if args.once:
         gpus  = get_gpu_stats()
@@ -1348,6 +1391,7 @@ def main():
             ("Feishu",   bool(FEISHU_WEBHOOK_URL)),
             ("DingTalk", bool(DINGTALK_WEBHOOK_URL)),
             ("Bark",     bool(BARK_URL)),
+            ("Rocket.Chat",  bool(ROCKETCHAT_WEBHOOK_URL)),
             ("Google Chat",  bool(GOOGLE_CHAT_WEBHOOK_URL)),
             ("Zulip",       bool(ZULIP_SITE and ZULIP_EMAIL and ZULIP_API_KEY)),
             ("Mattermost", bool(MATTERMOST_WEBHOOK_URL)),

@@ -19,7 +19,7 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 - **Per-machine color** — auto-assigned color bar for multi-machine setups
 - **Uptime tracking** — shows `up 2h30m` or `idle 15min` in status
 - **Prometheus `/metrics`** — expose GPU stats for Grafana/alertmanager (requires `WEB_PORT`)
-- **18 notification channels** — Slack, Discord, Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTalk, Bark, ntfy, Gotify, Pushover, Mattermost, Teams, Google Chat, Zulip, OpenClaw
+- **19 notification channels** — Slack, Discord, Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTalk, Bark, Rocket.Chat, ntfy, Gotify, Pushover, Mattermost, Teams, Google Chat, Zulip, OpenClaw
 - **`--test-notify`** — verify all configured channels with one command
 - **Watchdog** — auto-restart on crash
 - **Log rotation** — 5MB x 3 backups
@@ -29,7 +29,7 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 | | gpu-monitor | gpustat | nvitop | wandb |
 |---|---|---|---|---|
 | Background alerts | ✅ | ❌ | ❌ | ❌ |
-| Multi-channel notifications | ✅ 18 channels | ❌ | ❌ | Slack only |
+| Multi-channel notifications | ✅ 19 channels | ❌ | ❌ | Slack only |
 | Zero dependencies | ✅ stdlib only | ❌ | ❌ | ❌ |
 | Single file deploy | ✅ | ❌ | ❌ | ❌ |
 | Prometheus `/metrics` | ✅ | ❌ | ✅ | ❌ |
@@ -55,6 +55,7 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 | **ntfy** | ntfy.sh topic URL (or self-hosted), optional auth token |
 | **Gotify** | Gotify server URL + app token (self-hosted) |
 | **Pushover** | App token + user key from pushover.net |
+| **Rocket.Chat** | Incoming webhook URL |
 | **Google Chat** | Google Chat space webhook URL |
 | **Zulip** | Site URL + bot email + API key |
 | **Mattermost** | Incoming webhook URL |
@@ -89,6 +90,7 @@ python gpu_monitor.py
 
 # Multiple channels at once — just set multiple env vars
 python gpu_monitor.py --once          # check status once and exit
+python gpu_monitor.py --channels      # list which channels are configured
 python gpu_monitor.py --test-notify   # send a test alert to verify all channels work
 ```
 
@@ -235,6 +237,12 @@ Not configured:           Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTal
 |----------|-------------|
 | `PUSHOVER_TOKEN` | App API token from [pushover.net](https://pushover.net) |
 | `PUSHOVER_USER` | Your user/group key |
+
+### Rocket.Chat
+
+| Variable | Description |
+|----------|-------------|
+| `ROCKETCHAT_WEBHOOK_URL` | Rocket.Chat incoming webhook URL (Administration → Integrations → Incoming WebHook) |
 
 ### Google Chat
 
