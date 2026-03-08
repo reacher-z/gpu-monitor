@@ -1,0 +1,60 @@
+groups:
+  - name: gpu_monitor
+    rules:
+      # ── Idle alert ──────────────────────────────────────────────────────────
+      - alert: GPUAllIdle
+        expr: avg by (host) (gpu_utilization_percent) < 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "All GPUs idle on {{ $labels.host }}"
+          description: "Average GPU utilization on {{ $labels.host }} has been below 10% for 5 minutes. Training may have finished or crashed."
+
+      # ── Temperature ─────────────────────────────────────────────────────────
+      - alert: GPUHighTemperature
+        expr: gpu_temperature_celsius > 85
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GPU {{ $labels.gpu }} overheating on {{ $labels.host }}"
+          description: "GPU {{ $labels.gpu }} on {{ $labels.host }} is at {{ $value }}°C (threshold: 85°C). Check cooling."
+
+      - alert: GPUCriticalTemperature
+        expr: gpu_temperature_celsius > 92
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "GPU {{ $labels.gpu }} critical temperature on {{ $labels.host }}"
+          description: "GPU {{ $labels.gpu }} on {{ $labels.host }} is at {{ $value }}°C. GPU may throttle or shut down."
+
+      # ── Memory ──────────────────────────────────────────────────────────────
+      - alert: GPUMemoryHigh
+        expr: gpu_memory_utilization_percent > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GPU {{ $labels.gpu }} memory near full on {{ $labels.host }}"
+          description: "GPU {{ $labels.gpu }} on {{ $labels.host }} is at {{ $value }}% memory utilization."
+
+      - alert: GPUMemoryFull
+        expr: gpu_memory_utilization_percent > 98
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "GPU {{ $labels.gpu }} memory full on {{ $labels.host }}"
+          description: "GPU {{ $labels.gpu }} on {{ $labels.host }} is at {{ $value }}% memory. OOM kill likely imminent."
+
+      # ── Exporter down ───────────────────────────────────────────────────────
+      - alert: GPUMonitorDown
+        expr: absent(gpu_utilization_percent)
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "gpu-monitor exporter is down"
+          description: "No GPU metrics have been received for 3 minutes. The gpu-monitor process may have crashed."

@@ -318,6 +318,24 @@ scrape_configs:
 
 A pre-built **Grafana dashboard** is included at [`grafana/dashboard.json`](grafana/dashboard.json) — import it in Grafana via Dashboards → Import → Upload JSON. It includes utilization, memory, temperature, and power panels with host and GPU variable filters.
 
+**Prometheus alerting rules** are included at [`grafana/alerts.yml`](grafana/alerts.yml) — copy to your Prometheus `rules/` directory and add to `prometheus.yml`:
+
+```yaml
+rule_files:
+  - rules/gpu-monitor-alerts.yml
+```
+
+Included rules:
+
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| `GPUAllIdle` | avg util < 10% for 5m | warning |
+| `GPUHighTemperature` | temp > 85°C for 2m | warning |
+| `GPUCriticalTemperature` | temp > 92°C for 1m | critical |
+| `GPUMemoryHigh` | mem util > 90% for 5m | warning |
+| `GPUMemoryFull` | mem util > 98% for 2m | critical |
+| `GPUMonitorDown` | no metrics for 3m | critical |
+
 ## GitHub Pages Dashboard
 
 Real-time GPU dashboard hosted on GitHub Pages — no server needed.
