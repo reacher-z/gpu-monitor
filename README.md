@@ -36,6 +36,7 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 | **Feishu (飞书)** | Webhook URL |
 | **DingTalk (钉钉)** | Webhook URL |
 | **Bark** | Bark server URL (self-hosted or api.day.app) |
+| **ntfy** | ntfy.sh topic URL (or self-hosted), optional auth token |
 | **OpenClaw** | Webhook URL + secret — routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, and [20+ more](https://openclaw.ai) |
 
 Configure one or more — only channels with credentials set will be used.
@@ -160,6 +161,13 @@ bash start.sh status    # check if running
 |----------|-------------|
 | `BARK_URL` | Bark server URL, e.g. `https://api.day.app/YOUR_KEY` |
 
+### ntfy
+
+| Variable | Description |
+|----------|-------------|
+| `NTFY_URL` | ntfy topic URL, e.g. `https://ntfy.sh/my-gpu-alerts` or self-hosted |
+| `NTFY_TOKEN` | Auth token (optional, for protected topics) |
+
 ### OpenClaw
 
 | Variable | Description |
@@ -243,6 +251,20 @@ Deploy to each machine — each gets an auto-assigned color in Slack/Discord and
 ### Bark (iOS)
 1. Install [Bark](https://github.com/Finb/Bark) from the App Store
 2. Copy your device URL → `BARK_URL` (e.g. `https://api.day.app/YOUR_DEVICE_KEY`)
+
+## Setting Up ntfy
+
+[ntfy](https://ntfy.sh) is a simple, zero-signup push notification service. Subscribe via the ntfy app (Android/iOS), the web UI, or any HTTP client.
+
+```bash
+# No account needed — just pick any topic name
+export NTFY_URL="https://ntfy.sh/my-gpu-cluster-abc123"
+python gpu_monitor.py
+```
+
+Subscribe to the same topic in the ntfy app on your phone to receive GPU alerts instantly. For private topics, generate a token at [ntfy.sh/app](https://ntfy.sh/app) and set `NTFY_TOKEN`.
+
+Self-hosted: replace `https://ntfy.sh/` with your server URL.
 
 ## Setting Up OpenClaw
 
