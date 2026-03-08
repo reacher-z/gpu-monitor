@@ -22,6 +22,20 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 - **Watchdog** — auto-restart on crash
 - **Log rotation** — 5MB x 3 backups
 
+## Why gpu-monitor?
+
+| | gpu-monitor | gpustat | nvitop | wandb |
+|---|---|---|---|---|
+| Background alerts | ✅ | ❌ | ❌ | ❌ |
+| Multi-channel notifications | ✅ 15 channels | ❌ | ❌ | Slack only |
+| Zero dependencies | ✅ stdlib only | ❌ | ❌ | ❌ |
+| Single file deploy | ✅ | ❌ | ❌ | ❌ |
+| Prometheus `/metrics` | ✅ | ❌ | ✅ | ❌ |
+| Crash detection | ✅ | ❌ | ❌ | ❌ |
+| Multi-machine dashboard | ✅ GitHub Pages | ❌ | ❌ | ✅ paid |
+
+**gpustat** and **nvitop** are great interactive tools — gpu-monitor fills the complementary role of *unattended background monitoring with instant alerts*.
+
 ## Supported Notification Channels
 
 | Channel | What you need |
@@ -39,6 +53,7 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 | **ntfy** | ntfy.sh topic URL (or self-hosted), optional auth token |
 | **Gotify** | Gotify server URL + app token (self-hosted) |
 | **Pushover** | App token + user key from pushover.net |
+| **Microsoft Teams** | Teams incoming webhook URL |
 | **OpenClaw** | Webhook URL + secret — routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, and [20+ more](https://openclaw.ai) |
 
 Configure one or more — only channels with credentials set will be used.
@@ -183,6 +198,12 @@ bash start.sh status    # check if running
 |----------|-------------|
 | `PUSHOVER_TOKEN` | App API token from [pushover.net](https://pushover.net) |
 | `PUSHOVER_USER` | Your user/group key |
+
+### Microsoft Teams
+
+| Variable | Description |
+|----------|-------------|
+| `TEAMS_WEBHOOK_URL` | Teams incoming webhook URL (channel → ⋯ → Connectors → Incoming Webhook) |
 
 ### OpenClaw
 

@@ -5,7 +5,7 @@ Lightweight GPU Monitor with multi-channel notifications and web dashboard.
 Supported notification channels (configure via environment variables):
   Slack, Discord, Telegram, Email (SMTP), SMS (Twilio), iMessage (macOS only),
   WeCom (企业微信), Feishu (飞书), DingTalk (钉钉), Bark (iOS push),
-  ntfy (self-hosted or ntfy.sh), Gotify (self-hosted), Pushover,
+  ntfy (self-hosted or ntfy.sh), Gotify (self-hosted), Pushover, Microsoft Teams,
   OpenClaw (routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, etc.)
 
 Web dashboard:
@@ -99,6 +99,7 @@ GOTIFY_URL   = os.environ.get("GOTIFY_URL",   "")  # e.g. http://gotify.example.
 GOTIFY_TOKEN = os.environ.get("GOTIFY_TOKEN", "")  # app token from Gotify
 PUSHOVER_TOKEN   = os.environ.get("PUSHOVER_TOKEN",   "")  # app token from pushover.net
 PUSHOVER_USER    = os.environ.get("PUSHOVER_USER",    "")  # user/group key
+TEAMS_WEBHOOK_URL = os.environ.get("TEAMS_WEBHOOK_URL", "")  # Microsoft Teams incoming webhook URL
 
 # GitHub Pages dashboard (optional)
 GITHUB_PAGES_TOKEN = os.environ.get("GITHUB_PAGES_TOKEN", "")
@@ -475,6 +476,36 @@ def send_bark(plain_text: str) -> bool:
         return False
 
 
+def send_teams(plain_text: str) -> bool:
+    """Send via Microsoft Teams incoming webhook (Adaptive Card format).
+
+    Create a webhook: Teams channel → ⋯ → Connectors → Incoming Webhook.
+    Docs: https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook
+    """
+    if not TEAMS_WEBHOOK_URL:
+        return False
+    lines = plain_text.strip().splitlines()
+    title = lines[0] if lines else "GPU Monitor"
+    body  = "\n\n".join(lines[1:]) if len(lines) > 1 else plain_text
+    # Adaptive Card 1.4 (supported by Teams)
+    payload = {
+        "type": "message",
+        "attachments": [{
+            "contentType": "application/vnd.microsoft.card.adaptive",
+            "content": {
+                "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                "type": "AdaptiveCard",
+                "version": "1.4",
+                "body": [
+                    {"type": "TextBlock", "text": title, "weight": "Bolder", "size": "Medium", "wrap": True},
+                    {"type": "TextBlock", "text": body,  "wrap": True, "spacing": "Small"},
+                ],
+            },
+        }],
+    }
+    return _post_json(TEAMS_WEBHOOK_URL, payload, ok_statuses=(200, 202), label="Teams")
+
+
 def send_pushover(plain_text: str) -> bool:
     """Send via Pushover (https://pushover.net) — iOS/Android push notifications."""
     if not PUSHOVER_TOKEN or not PUSHOVER_USER:
@@ -600,6 +631,7 @@ def notify(slack_text: str, color: str = "") -> None:
             send_feishu(plain)
             send_dingtalk(plain)
             send_bark(plain)
+            send_teams(plain)
             send_pushover(plain)
             send_gotify(plain)
             send_ntfy(plain)
