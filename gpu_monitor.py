@@ -5,7 +5,7 @@ Lightweight GPU Monitor with multi-channel notifications and web dashboard.
 Supported notification channels (configure via environment variables):
   Slack, Discord, Telegram, Email (SMTP), SMS (Twilio), iMessage (macOS only),
   WeCom (企业微信), Feishu (飞书), DingTalk (钉钉), Bark (iOS push),
-  ntfy (self-hosted or ntfy.sh),
+  ntfy (self-hosted or ntfy.sh), Gotify (self-hosted),
   OpenClaw (routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, etc.)
 
 Web dashboard:
@@ -95,6 +95,8 @@ OPENCLAW_WEBHOOK_URL    = os.environ.get("OPENCLAW_WEBHOOK_URL",    "")  # e.g. 
 OPENCLAW_WEBHOOK_SECRET = os.environ.get("OPENCLAW_WEBHOOK_SECRET", "")  # Bearer token for auth
 NTFY_URL   = os.environ.get("NTFY_URL",   "")  # e.g. https://ntfy.sh/your-topic (or self-hosted)
 NTFY_TOKEN = os.environ.get("NTFY_TOKEN", "")  # optional auth token
+GOTIFY_URL   = os.environ.get("GOTIFY_URL",   "")  # e.g. http://gotify.example.com
+GOTIFY_TOKEN = os.environ.get("GOTIFY_TOKEN", "")  # app token from Gotify
 
 # GitHub Pages dashboard (optional)
 GITHUB_PAGES_TOKEN = os.environ.get("GITHUB_PAGES_TOKEN", "")
@@ -471,6 +473,34 @@ def send_bark(plain_text: str) -> bool:
         return False
 
 
+def send_gotify(plain_text: str) -> bool:
+    """Send via Gotify (self-hosted push notification server).
+
+    Docs: https://gotify.net/api-docs
+    """
+    if not GOTIFY_URL or not GOTIFY_TOKEN:
+        return False
+    lines = plain_text.strip().splitlines()
+    title = lines[0][:100] if lines else "GPU Monitor"
+    url = GOTIFY_URL.rstrip("/") + "/message"
+    payload = {"title": title, "message": plain_text, "priority": 5}
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode(),
+            headers={
+                "Content-Type": "application/json",
+                "X-Gotify-Key": GOTIFY_TOKEN,
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.status == 200
+    except Exception as e:
+        logger.error(f"Gotify error: {e}")
+        return False
+
+
 def send_ntfy(plain_text: str) -> bool:
     """Send via ntfy.sh (or self-hosted ntfy server).
 
@@ -542,6 +572,7 @@ def notify(slack_text: str, color: str = "") -> None:
             send_feishu(plain)
             send_dingtalk(plain)
             send_bark(plain)
+            send_gotify(plain)
             send_ntfy(plain)
             send_openclaw(plain)
         except Exception as e:

@@ -37,6 +37,7 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 | **DingTalk (钉钉)** | Webhook URL |
 | **Bark** | Bark server URL (self-hosted or api.day.app) |
 | **ntfy** | ntfy.sh topic URL (or self-hosted), optional auth token |
+| **Gotify** | Gotify server URL + app token (self-hosted) |
 | **OpenClaw** | Webhook URL + secret — routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, and [20+ more](https://openclaw.ai) |
 
 Configure one or more — only channels with credentials set will be used.
@@ -167,6 +168,13 @@ bash start.sh status    # check if running
 |----------|-------------|
 | `NTFY_URL` | ntfy topic URL, e.g. `https://ntfy.sh/my-gpu-alerts` or self-hosted |
 | `NTFY_TOKEN` | Auth token (optional, for protected topics) |
+
+### Gotify
+
+| Variable | Description |
+|----------|-------------|
+| `GOTIFY_URL` | Gotify server URL, e.g. `http://gotify.example.com` |
+| `GOTIFY_TOKEN` | App token from Gotify dashboard |
 
 ### OpenClaw
 
