@@ -22,6 +22,9 @@
 - **Dashboard**: dark/light theme toggle (keyboard shortcut `t`), `r` to refresh, version badge per machine
 - **Grafana dashboard** (`grafana/dashboard.json`) — importable pre-built dashboard with utilization, memory, temperature, and power panels; host/GPU variable filters; 30s auto-refresh
 - **Prometheus alerting rules** (`grafana/alerts.yml`) — 6 rules: idle, high temp, critical temp, high memory, full memory, exporter-down
+- **Temperature alerting** — `GPU_TEMP_WARN` (default 85°C) and `GPU_TEMP_CRIT` (default 92°C) trigger notifications via all configured channels without requiring Prometheus; 5°C hysteresis prevents flapping
+- **Fan speed metric** — `gpu_fan_speed_percent` Prometheus metric (from `nvidia-smi fan.speed`)
+- **`--json` flag** — print current GPU stats and processes as JSON and exit (scriptable: `gpu_monitor.py --json | jq '.gpus[].util'`)
 
 ### Fixed
 - `monitor()` startup log now lists all 19 configured channels (was missing 9 new channels)

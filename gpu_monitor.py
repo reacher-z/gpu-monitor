@@ -118,6 +118,9 @@ APPRISE_URLS = os.environ.get("APPRISE_URLS", "")  # space or comma-separated Ap
 # Memory leak detection
 MEMLEAK_THRESHOLD = int(os.environ.get("MEMLEAK_THRESHOLD", "30"))  # % growth to trigger alert
 MEMLEAK_MINUTES   = int(os.environ.get("MEMLEAK_MINUTES",   "10"))  # window to check
+# Temperature alerting (0 = disabled)
+GPU_TEMP_WARN = int(os.environ.get("GPU_TEMP_WARN", "85"))  # °C — warning alert
+GPU_TEMP_CRIT = int(os.environ.get("GPU_TEMP_CRIT", "92"))  # °C — critical alert
 
 # GitHub Pages dashboard (optional)
 GITHUB_PAGES_TOKEN = os.environ.get("GITHUB_PAGES_TOKEN", "")
@@ -186,13 +189,14 @@ def get_gpu_stats() -> list[dict]:
                 "mem_used": mem_used, "mem_total": mem_total, "temp": temp,
                 "power_w":   None,
                 "clock_mhz": None,
+                "fan_speed":  None,
             })
 
-        # Optional query — power and clock; skip silently if driver doesn't support it
+        # Optional query — power, clock, fan; skip silently if driver doesn't support it
         try:
             r2 = subprocess.run(
                 ["nvidia-smi",
-                 "--query-gpu=index,power.draw,clocks.sm",
+                 "--query-gpu=index,power.draw,clocks.sm,fan.speed",
                  "--format=csv,noheader,nounits"],
                 capture_output=True, text=True, timeout=10,
             )
@@ -202,14 +206,15 @@ def get_gpu_stats() -> list[dict]:
                     if not line.strip():
                         continue
                     p = [x.strip() for x in line.split(",")]
-                    if len(p) < 3:
+                    if len(p) < 4:
                         continue
                     idx = _safe_int(p[0])
                     if idx is not None and idx in idx_map:
                         idx_map[idx]["power_w"]   = _safe_float(p[1])
                         idx_map[idx]["clock_mhz"] = _safe_int(p[2])
+                        idx_map[idx]["fan_speed"]  = _safe_int(p[3])
         except Exception as e:
-            logger.debug(f"Optional power/clock query failed (skipping): {e}")
+            logger.debug(f"Optional power/clock/fan query failed (skipping): {e}")
 
         return gpus
     except Exception as e:
@@ -1058,6 +1063,11 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
             # Computed: memory utilization %
             lines += ["# HELP gpu_memory_utilization_percent GPU memory utilization %", "# TYPE gpu_memory_utilization_percent gauge"]
             lines += [f'gpu_memory_utilization_percent{{gpu="{g["idx"]}",host="{h}"}} {round(g["mem_used"]/g["mem_total"]*100,1) if g["mem_total"] else 0}' for g in gpus]
+            # Fan speed
+            fs = [g for g in gpus if g.get("fan_speed") is not None]
+            if fs:
+                lines += ["# HELP gpu_fan_speed_percent GPU fan speed %", "# TYPE gpu_fan_speed_percent gauge"]
+                lines += [f'gpu_fan_speed_percent{{gpu="{g["idx"]}",host="{h}"}} {g["fan_speed"]}' for g in fs]
             # Process count per GPU
             procs_now = get_gpu_processes()
             lines += ["# HELP gpu_process_count Number of compute processes on GPU", "# TYPE gpu_process_count gauge"]
@@ -1217,6 +1227,8 @@ def monitor():
     # Memory leak detection: {gpu_idx: [(timestamp, mem_used_mib), ...]}
     _mem_history: dict[int, list] = {}
     _memleak_alerted: set[int] = set()
+    # Temperature alerting: {gpu_idx: 'warn' | 'crit'}
+    _temp_alerted: dict[int, str] = {}
 
     channels = [c for c, v in [
         ("Slack",        SLACK_WEBHOOK_URL),
@@ -1389,6 +1401,30 @@ def monitor():
                 elif growth_pct < MEMLEAK_THRESHOLD / 2:
                     _memleak_alerted.discard(idx)  # reset when growth subsides
 
+        # --- Temperature alerting (standalone, no Prometheus needed) ---
+        if GPU_TEMP_WARN > 0:
+            for g in gpus:
+                idx, temp = g["idx"], g["temp"]
+                alerted = _temp_alerted.get(idx, "")
+                if temp >= GPU_TEMP_CRIT and alerted != "crit":
+                    logger.warning(f"GPU{idx}: critical temperature {temp}°C (threshold: {GPU_TEMP_CRIT}°C)")
+                    notify(
+                        f":fire: *GPU{idx} critical temp* — {temp}°C "
+                        f"(threshold: {GPU_TEMP_CRIT}°C). GPU may throttle or shut down.",
+                        color="#e01e5a",
+                    )
+                    _temp_alerted[idx] = "crit"
+                elif temp >= GPU_TEMP_WARN and alerted not in ("warn", "crit"):
+                    logger.warning(f"GPU{idx}: high temperature {temp}°C (threshold: {GPU_TEMP_WARN}°C)")
+                    notify(
+                        f":thermometer: *GPU{idx} high temp* — {temp}°C "
+                        f"(threshold: {GPU_TEMP_WARN}°C). Check cooling.",
+                        color="#ecb22e",
+                    )
+                    _temp_alerted[idx] = "warn"
+                elif temp < GPU_TEMP_WARN - 5:  # hysteresis: clear when 5°C below warn
+                    _temp_alerted.pop(idx, None)
+
         time.sleep(CHECK_INTERVAL)
 
 
@@ -1414,6 +1450,7 @@ def main():
     parser = argparse.ArgumentParser(description="Lightweight GPU Monitor")
     parser.add_argument("--version",     action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--once",        action="store_true", help="Print status and exit")
+    parser.add_argument("--json",        action="store_true", help="Output current GPU stats as JSON and exit")
     parser.add_argument("--channels",    action="store_true", help="List configured notification channels and exit")
     parser.add_argument("--test-notify", action="store_true", help="Send a test notification to all configured channels and exit")
     parser.add_argument("--web",  type=int, metavar="PORT", default=0,
@@ -1452,6 +1489,20 @@ def main():
         gpus  = get_gpu_stats()
         procs = get_gpu_processes()
         print(_to_plain(format_status(gpus, procs)))
+        sys.exit(0)
+
+    if args.json:
+        gpus  = get_gpu_stats()
+        procs = get_gpu_processes()
+        procs_serializable = {str(k): v for k, v in procs.items()}
+        payload = {
+            "host":      HOSTNAME,
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "version":   __version__,
+            "gpus":      gpus,
+            "procs":     procs_serializable,
+        }
+        print(json.dumps(payload, indent=2))
         sys.exit(0)
 
     if args.test_notify:

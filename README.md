@@ -21,7 +21,10 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 - **Prometheus `/metrics`** — expose GPU stats for Grafana/alertmanager (requires `WEB_PORT`)
 - **19 notification channels** — Slack, Discord, Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTalk, Bark, Rocket.Chat, ntfy, Gotify, Pushover, Mattermost, Teams, Google Chat, Zulip, OpenClaw (+ **80+ more via [Apprise](https://github.com/caronc/apprise)**)
 - **Memory leak detection** — alert when GPU memory grows unexpectedly without process changes
+- **Temperature alerting** — `GPU_TEMP_WARN` / `GPU_TEMP_CRIT` thresholds, no Prometheus required
+- **Fan speed** — `gpu_fan_speed_percent` Prometheus metric for thermal correlation
 - **`--test-notify`** — verify all configured channels with one command
+- **`--json`** — output current GPU stats as JSON for shell scripting (`--json | jq '.gpus[].util'`)
 - **Watchdog** — auto-restart on crash
 - **Log rotation** — 5MB x 3 backups
 
@@ -165,6 +168,8 @@ Not configured:           Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTal
 | `APPRISE_URLS` | — | Space/comma-separated [Apprise](https://github.com/caronc/apprise) URLs (optional, `pip install apprise`) |
 | `MEMLEAK_THRESHOLD` | `30` | GPU memory growth % to trigger leak alert |
 | `MEMLEAK_MINUTES` | `10` | Window (minutes) for memory leak detection |
+| `GPU_TEMP_WARN` | `85` | °C threshold for high temperature warning alert |
+| `GPU_TEMP_CRIT` | `92` | °C threshold for critical temperature alert |
 
 ### Slack
 
@@ -306,7 +311,7 @@ python gpu_monitor.py
 # Metrics at http://localhost:8080/metrics
 ```
 
-Exposed metrics: `gpu_utilization_percent`, `gpu_memory_used_mib`, `gpu_memory_total_mib`, `gpu_memory_utilization_percent`, `gpu_temperature_celsius`, `gpu_power_watts`, `gpu_clock_sm_mhz`, `gpu_process_count`. All labeled with `gpu` index and `host`.
+Exposed metrics: `gpu_utilization_percent`, `gpu_memory_used_mib`, `gpu_memory_total_mib`, `gpu_memory_utilization_percent`, `gpu_temperature_celsius`, `gpu_power_watts`, `gpu_clock_sm_mhz`, `gpu_fan_speed_percent`, `gpu_process_count`. All labeled with `gpu` index and `host`.
 
 Add to your `prometheus.yml`:
 ```yaml
