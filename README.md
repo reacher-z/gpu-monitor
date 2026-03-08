@@ -3,20 +3,25 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/gpu-watchdog.svg)](https://pypi.org/project/gpu-watchdog/)
-[![20 channels](https://img.shields.io/badge/channels-20-blueviolet.svg)](#supported-notification-channels)
+[![20 channels](https://img.shields.io/badge/notification%20channels-20%20built--in-blueviolet.svg)](#supported-notification-channels)
 
-**Get alerted on Slack, Discord, Telegram (20 notification channels total) when your GPU training crashes, goes idle, or overheats.** Single Python file. Zero dependencies. Works in the background while you sleep.
+**Stop losing GPU-hours to silent crashes.** gpu-monitor runs in the background and instantly alerts you on Slack, Discord, Telegram, or [19 other channels](#supported-notification-channels) the moment your training job crashes, your GPU goes idle, or your machine overheats — while you sleep, travel, or work on something else.
 
 ```bash
 pip install gpu-watchdog
-export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK"
-gpu-monitor   # or: python gpu_monitor.py
+export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+gpu-monitor
 ```
+
+That's it. You're protected.
+
+> If gpu-monitor saved your training run, please **[star it](https://github.com/reacher-z/gpu-monitor)** — it helps other researchers find the tool.
 
 ---
 
 ## Table of Contents
 
+- [What Happens When...](#what-happens-when)
 - [Quick Start](#quick-start)
 - [Example Output](#example-output)
 - [Why gpu-monitor?](#why-gpu-monitor)
@@ -36,67 +41,107 @@ gpu-monitor   # or: python gpu_monitor.py
   - [ntfy](#setting-up-ntfy)
   - [Apprise (80+ extra services)](#setting-up-apprise-80-extra-services)
   - [OpenClaw](#setting-up-openclaw)
+- [Who Uses gpu-monitor?](#who-uses-gpu-monitor)
+- [Author](#author)
+
+---
+
+## What Happens When...
+
+Real scenarios gpu-monitor handles automatically:
+
+**Your training job crashes at 3 AM:**
+```
+gpu-cluster-1 | GPUs went idle — processes exited: 12345, 12346, 12347 | avg 1% | 38°C | mem 2G/320G (1%)
+```
+You wake up to this Slack message and can restart immediately, instead of discovering 8 lost hours in the morning.
+
+**A GPU overheats during a long run:**
+```
+gpu-cluster-1 | GPU 2 temperature CRITICAL: 94°C (limit 92°C) | util 88% | fan 98%
+```
+You get paged before hardware damage or throttling ruins your results.
+
+**Memory is quietly leaking across epochs:**
+```
+gpu-cluster-1 | GPU 0 memory leak detected: 18G → 31G (+72%) over 10min | process python3[alice]
+```
+Caught before you OOM-crash at epoch 47.
+
+**One GPU goes idle while others are busy (hung worker):**
+```
+gpu-cluster-1 | GPU 3 idle (2%) while others active (87-91%) — possible hung worker
+```
+
+**ECC errors silently corrupting your gradients:**
+```
+gpu-cluster-1 | GPU 1 uncorrected ECC errors: +3 since last check | retire this GPU before it corrupts results
+```
 
 ---
 
 ## Quick Start
 
-**Install:**
+**Step 1 — Install:**
 
 ```bash
-# Option 1: pip (recommended)
+# Option A: pip (recommended)
 pip install gpu-watchdog
 
-# Option 2: single file, no install needed
+# Option B: single file, zero install
 curl -O https://raw.githubusercontent.com/reacher-z/gpu-monitor/main/gpu_monitor.py
 ```
 
-**Run with your notification channel:**
+**Step 2 — Pick your notification channel:**
 
 ```bash
 # Slack
 export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
-python gpu_monitor.py
 
 # Discord
 export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/YOUR/WEBHOOK"
-python gpu_monitor.py
 
 # Telegram
 export TELEGRAM_BOT_TOKEN="your-bot-token"
 export TELEGRAM_CHAT_ID="your-chat-id"
-python gpu_monitor.py
 
-# ntfy (zero-signup push notifications to your phone)
+# ntfy — zero signup, push to your phone right now
 export NTFY_URL="https://ntfy.sh/my-gpu-cluster-abc123"
-python gpu_monitor.py
 ```
 
-Set multiple env vars to send to multiple channels simultaneously.
+**Step 3 — Run:**
+
+```bash
+gpu-monitor
+# or: python gpu_monitor.py
+```
+
+Set multiple env vars to fan out to multiple channels simultaneously.
 
 **Useful CLI flags:**
 
 ```bash
-python gpu_monitor.py --once          # check once and print status, then exit
-python gpu_monitor.py --json          # output current GPU stats as JSON
-python gpu_monitor.py --watch 2       # live color terminal table, 2-second refresh
-python gpu_monitor.py --channels      # show which notification channels are configured
-python gpu_monitor.py --test-notify   # send a test alert to all configured channels
-python gpu_monitor.py --web 8080      # dashboard + Prometheus /metrics at :8080
+gpu-monitor --once          # check once, print status, exit
+gpu-monitor --json          # current GPU stats as JSON (pipe to jq, scripts, etc.)
+gpu-monitor --watch 2       # live color terminal table, 2-second refresh
+gpu-monitor --channels      # show which notification channels are currently configured
+gpu-monitor --test-notify   # send a test alert to all configured channels
+gpu-monitor --web 8080      # dashboard + Prometheus /metrics at :8080
+gpu-monitor --version       # print version and exit
 ```
 
-**Run as a background service (systemd):**
+**Run as a persistent background service (systemd):**
 
 ```bash
 curl -O https://raw.githubusercontent.com/reacher-z/gpu-monitor/main/gpu-monitor.service
-# Edit the Environment= lines with your notification credentials, then:
+# Edit the Environment= lines with your credentials, then:
 sudo cp gpu-monitor.service /etc/systemd/system/gpu-monitor@$USER.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now gpu-monitor@$USER
 sudo journalctl -u gpu-monitor@$USER -f   # follow logs
 ```
 
-**Run with the full monitoring stack (Prometheus + Grafana + Alertmanager):**
+**Full monitoring stack (Prometheus + Grafana + Alertmanager):**
 
 ```bash
 cp .env.example .env && $EDITOR .env   # add your notification credentials
@@ -105,10 +150,10 @@ docker compose -f docker-compose.monitoring.yml up -d
 # Import grafana/dashboard.json for the pre-built GPU dashboard
 ```
 
-**Deploy to Kubernetes as a DaemonSet on every GPU node:**
+**Kubernetes — monitor every GPU node automatically:**
 
 ```bash
-# Edit kubernetes/secret.yaml with your notification credentials
+# Edit kubernetes/secret.yaml with your credentials
 kubectl apply -k kubernetes/
 ```
 
@@ -116,7 +161,7 @@ kubectl apply -k kubernetes/
 
 ## Example Output
 
-**`--watch` live terminal view:**
+**`--watch` live terminal view** (runs in your terminal like `htop` for GPUs):
 
 ```
 gpu-cluster-1          2026-03-07 14:32
@@ -127,25 +172,25 @@ GPU  Name                 Util   Mem         Temp   Power   Procs
   3  NVIDIA A100-SXM4-80  88%    21G/80G     71°C   310W    torchrun[bob]
 ```
 
-**`--once` status check:**
+**`--once` quick status check:**
 
 ```
-gpu-cluster-1 | 2026-03-07 14:32 | avg 87% | 72C | 1820W | mem 188G/320G (59%)
+gpu-cluster-1 | 2026-03-07 14:32 | avg 87% | 72°C | 1820W | mem 188G/320G (59%) | up 6h12m
 [87% 91% 83% 88% 92% 79% 85% 90%]
 GPU0: python3(18G)[alice] | GPU1: torchrun(22G)[bob] | GPU3: python3(18G)[carol]
 ```
 
-**Slack/Discord alert when all GPUs go idle:**
+**Slack/Discord alert — all GPUs went idle (crash detected):**
 
 ```
-gpu-cluster-1 | 2026-03-07 15:01 | avg 2% | 38C | idle 8min
+gpu-cluster-1 | GPUs went idle — processes exited: 12345, 12346, 12347 | avg 1% | 38°C | mem 2G/320G (1%)
+```
+
+**Slack/Discord alert — extended idle:**
+
+```
+gpu-cluster-1 | 2026-03-07 15:01 | avg 2% | 38°C | idle 8min
 All GPUs idle for 8 minutes. Last active: training job (alice)
-```
-
-**Crash detection alert (processes exited while GPUs were busy):**
-
-```
-gpu-cluster-1 | GPUs went idle — processes exited: 12345, 12346, 12347 | avg 1% | 38C | mem 2G/320G (1%)
 ```
 
 **`--test-notify` output:**
@@ -160,62 +205,64 @@ Not configured:           Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTal
 
 ## Why gpu-monitor?
 
-| | gpu-monitor | gpustat | nvitop | wandb |
-|---|---|---|---|---|
+gpu-monitor fills a gap that existing tools don't: **unattended background monitoring with instant multi-channel alerts**. gpustat and nvitop are excellent for interactive inspection — gpu-monitor is what runs while you're not watching.
+
+| Feature | **gpu-monitor** | gpustat | nvitop | wandb |
+|---------|:-----------:|:-------:|:------:|:-----:|
 | Background alerts | ✅ | ❌ | ❌ | ❌ |
-| Multi-channel notifications | ✅ 20 + 80 via Apprise | ❌ | ❌ | Slack only |
-| Zero dependencies | ✅ stdlib only | ❌ | ❌ | ❌ |
+| Multi-channel notifications | ✅ **20 built-in + 80 via Apprise** | ❌ | ❌ | Slack only |
+| Zero dependencies | ✅ **stdlib only** | ❌ | ❌ | ❌ |
 | Single file deploy | ✅ | ❌ | ❌ | ❌ |
-| Prometheus `/metrics` | ✅ 11 metrics | ❌ | ✅ | ❌ |
-| InfluxDB / Datadog / OTLP | ✅ | ❌ | ❌ | ❌ |
 | Crash detection | ✅ | ❌ | ❌ | ❌ |
 | Temperature alerting | ✅ | ❌ | ❌ | ❌ |
+| Memory leak detection | ✅ | ❌ | ❌ | ❌ |
 | ECC error detection | ✅ | ❌ | ❌ | ❌ |
+| Power throttle alert | ✅ | ❌ | ❌ | ❌ |
+| Prometheus `/metrics` | ✅ 11 metrics | ❌ | ✅ | ❌ |
+| InfluxDB / Datadog / OTLP | ✅ | ❌ | ❌ | ❌ |
 | Alertmanager receiver | ✅ | ❌ | ❌ | ❌ |
 | Live terminal view | ✅ `--watch` | ✅ | ✅ | ❌ |
 | Kubernetes DaemonSet | ✅ | ❌ | ❌ | ❌ |
-| Multi-machine dashboard | ✅ GitHub Pages | ❌ | ❌ | ✅ paid |
-
-**gpustat** and **nvitop** are excellent interactive tools — gpu-monitor fills the complementary role of *unattended background monitoring with instant alerts*.
+| Multi-machine dashboard | ✅ **GitHub Pages (free)** | ❌ | ❌ | ✅ paid |
 
 ---
 
 ## Features
 
-**Alerting**
+**Alerting — know before things go wrong**
+- **Crash detection** — GPUs suddenly go idle while processes were running → instant alert
 - **Idle alert** — all GPUs below 10% utilization for 5 min → alert
-- **Process crash detection** — GPUs suddenly go idle while processes were running → instant alert
-- **Partial idle** — some GPUs idle while others are busy → warning
-- **Recovery notification** — GPUs become active again → notify
+- **Partial idle** — some GPUs idle while others are busy (hung worker) → warning
+- **Recovery notification** — GPUs become active again after an idle period → notify
 - **Temperature alerting** — configurable `GPU_TEMP_WARN` / `GPU_TEMP_CRIT` thresholds, no Prometheus required
 - **Power throttle alert** — fires when power draw hits 95% of TDP limit
 - **ECC error detection** — alert on uncorrected volatile ECC errors (A100/H100/V100); prevents silent training corruption
 - **Memory leak detection** — alert when GPU memory grows unexpectedly without process changes
 
-**Status & Visibility**
+**Visibility — always know what your GPUs are doing**
 - **Periodic status** — active: every 10 min, idle: every 30 min
 - **Startup notification** — know when the monitor comes online
 - **GPU processes** — shows which processes are using each GPU with username
-- **Power draw** — shows watts per GPU in status messages
+- **Power draw** — watts per GPU in status messages
 - **Per-machine color** — auto-assigned color bar in Slack/Discord for multi-machine setups
 - **Uptime tracking** — shows `up 2h30m` or `idle 15min` in status
-- **`--watch`** — live ANSI color terminal table (like a lite nvtop): `gpu_monitor.py --watch 2`
-- **`--json`** — output current GPU stats as JSON: `--json | jq '.gpus[].util'`
+- **`--watch`** — live ANSI color terminal table (lightweight nvtop alternative)
+- **`--json`** — machine-readable output: `gpu-monitor --json | jq '.gpus[].util'`
 
-**Observability Integrations**
-- **Prometheus `/metrics`** — 11 metrics exposed when `WEB_PORT` is set; ready for Grafana
+**Observability integrations**
+- **Prometheus `/metrics`** — 11 metrics when `WEB_PORT` is set; Grafana-ready
 - **InfluxDB export** — line protocol to InfluxDB v1/v2 (`INFLUXDB_URL`)
 - **Datadog export** — DogStatsD gauges (`DATADOG_STATSD_HOST`)
 - **OpenTelemetry OTLP** — export to any OTel-compatible backend (`OTEL_EXPORTER_OTLP_ENDPOINT`)
 - **Alertmanager receiver** — route any Prometheus alert to all 20 channels via `POST /webhook`
 - **`ALERT_WEBHOOK_URL`** — POST JSON to any HTTP endpoint on every alert (CI/CD, custom integrations)
-- **Web dashboard sparklines** — `--web PORT` shows per-GPU utilization history
+- **Web dashboard sparklines** — `--web PORT` shows per-GPU utilization history over time
 
 **Deployment**
 - **20 notification channels** — Slack, Discord, Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTalk, Bark, Rocket.Chat, ntfy, Gotify, Pushover, Mattermost, Teams, Google Chat, Zulip, OpenClaw, PagerDuty (+ **80+ more via [Apprise](https://github.com/caronc/apprise)**)
 - **`--test-notify`** — verify all configured channels with one command
-- **Kubernetes DaemonSet** — deploy to every GPU node with one `kubectl apply -k kubernetes/`
-- **GitHub Pages dashboard** — multi-machine status page, no server required
+- **Kubernetes DaemonSet** — deploy to every GPU node with `kubectl apply -k kubernetes/`
+- **GitHub Pages dashboard** — multi-machine status page, no extra server needed
 - **Watchdog** — auto-restart on crash
 - **Log rotation** — 5 MB × 3 backups
 
@@ -223,7 +270,7 @@ Not configured:           Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTal
 
 ## Supported Notification Channels
 
-20 channels built in. Set the relevant env vars — only channels with credentials configured are used.
+20 channels built in. Configure any combination — only channels with credentials set are used.
 
 | Channel | Env var(s) needed |
 |---------|-------------------|
@@ -410,7 +457,7 @@ Enable with `WEB_PORT`:
 
 ```bash
 export WEB_PORT=8080
-python gpu_monitor.py
+gpu-monitor
 # Metrics at http://localhost:8080/metrics
 # Dashboard at http://localhost:8080/
 ```
@@ -518,7 +565,7 @@ Real-time GPU dashboard hosted on GitHub Pages — no extra server needed.
 ```bash
 export GITHUB_PAGES_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 export GITHUB_PAGES_REPO=your-username/your-repo
-python gpu_monitor.py
+gpu-monitor
 ```
 
 The monitor pushes `docs/data/{hostname}.json` every check interval. The dashboard at `https://your-username.github.io/your-repo/` auto-refreshes every 30 seconds.
@@ -534,7 +581,7 @@ Multi-machine: each machine pushes its own file. The dashboard shows all machine
 
 ## Multi-Machine Setup
 
-Deploy to each machine — each gets an auto-assigned color in Slack/Discord and appears on the GitHub Pages dashboard. All report to the same webhook/channel.
+Deploy to each machine — each gets an auto-assigned color in Slack/Discord and appears on the GitHub Pages dashboard. All report to the same webhook/channel with their hostname clearly labeled in every message.
 
 ---
 
@@ -572,7 +619,7 @@ Deploy to each machine — each gets an auto-assigned color in Slack/Discord and
 ```bash
 # No account needed — just pick any topic name
 export NTFY_URL="https://ntfy.sh/my-gpu-cluster-abc123"
-python gpu_monitor.py
+gpu-monitor
 ```
 
 Subscribe to the same topic in the ntfy app on your phone to receive alerts instantly. For private topics, generate a token at [ntfy.sh/app](https://ntfy.sh/app) and set `NTFY_TOKEN`.
@@ -586,7 +633,7 @@ Self-hosted: replace `https://ntfy.sh/` with your own server URL.
 ```bash
 pip install apprise
 export APPRISE_URLS="slack://TokenA/TokenB/TokenC/#channel tgram://bot_token/chat_id"
-python gpu_monitor.py
+gpu-monitor
 ```
 
 The core gpu-monitor has zero dependencies — Apprise is only activated when installed and `APPRISE_URLS` is set.
@@ -604,5 +651,29 @@ See the full list of URL formats in the [Apprise wiki](https://github.com/caronc
 ```bash
 export OPENCLAW_WEBHOOK_URL="http://your-openclaw-host:18789/hooks/wake"
 export OPENCLAW_WEBHOOK_SECRET="your-bearer-token"  # optional, if auth enabled
-python gpu_monitor.py
+gpu-monitor
 ```
+
+---
+
+## Who Uses gpu-monitor?
+
+gpu-monitor is used by ML researchers, PhD students, and infrastructure engineers who run long training jobs and can't watch their machines around the clock.
+
+**Common setups:**
+- Single researcher monitoring a local workstation with Telegram alerts
+- Lab with 4–8 GPU nodes, all reporting to a shared Slack channel with per-machine colors
+- Cloud cluster on Kubernetes, with PagerDuty integration for on-call rotation
+- Self-hosted Prometheus + Grafana stack with Alertmanager routing through gpu-monitor's webhook receiver
+
+Have a setup you're proud of? **[Open an issue with the `showcase` label](https://github.com/reacher-z/gpu-monitor/issues/new?labels=showcase)** and share it — setups get featured here.
+
+---
+
+## Author
+
+Built and maintained by [reacher-z](https://github.com/reacher-z).
+
+If this tool saved your GPU-hours or helped you catch a crash before it ruined a training run, consider giving it a **[star on GitHub](https://github.com/reacher-z/gpu-monitor)** — it helps other researchers and engineers discover the project.
+
+Bugs, feature requests, and channel integrations: [open an issue](https://github.com/reacher-z/gpu-monitor/issues) or [submit a PR](https://github.com/reacher-z/gpu-monitor/pulls). Contributions are welcome.
