@@ -1017,6 +1017,13 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
             if cl:
                 lines += ["# HELP gpu_clock_sm_mhz GPU SM clock MHz", "# TYPE gpu_clock_sm_mhz gauge"]
                 lines += [f'gpu_clock_sm_mhz{{gpu="{g["idx"]}",host="{h}"}} {g["clock_mhz"]}' for g in cl]
+            # Computed: memory utilization %
+            lines += ["# HELP gpu_memory_utilization_percent GPU memory utilization %", "# TYPE gpu_memory_utilization_percent gauge"]
+            lines += [f'gpu_memory_utilization_percent{{gpu="{g["idx"]}",host="{h}"}} {round(g["mem_used"]/g["mem_total"]*100,1) if g["mem_total"] else 0}' for g in gpus]
+            # Process count per GPU
+            procs_now = get_gpu_processes()
+            lines += ["# HELP gpu_process_count Number of compute processes on GPU", "# TYPE gpu_process_count gauge"]
+            lines += [f'gpu_process_count{{gpu="{g["idx"]}",host="{h}"}} {len(procs_now.get(g["idx"], []))}' for g in gpus]
             body = ("\n".join(lines) + "\n").encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")

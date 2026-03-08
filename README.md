@@ -302,7 +302,7 @@ python gpu_monitor.py
 # Metrics at http://localhost:8080/metrics
 ```
 
-Exposed metrics: `gpu_utilization_percent`, `gpu_memory_used_mib`, `gpu_memory_total_mib`, `gpu_temperature_celsius`, `gpu_power_watts`, `gpu_clock_sm_mhz`. All labeled with `gpu`, `name`, and `host`.
+Exposed metrics: `gpu_utilization_percent`, `gpu_memory_used_mib`, `gpu_memory_total_mib`, `gpu_memory_utilization_percent`, `gpu_temperature_celsius`, `gpu_power_watts`, `gpu_clock_sm_mhz`, `gpu_process_count`. All labeled with `gpu` index and `host`.
 
 Add to your `prometheus.yml`:
 ```yaml
