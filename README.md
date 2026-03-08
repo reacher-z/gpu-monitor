@@ -2,9 +2,9 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![PyPI](https://img.shields.io/pypi/v/gpu-monitor.svg)](https://pypi.org/project/gpu-monitor/)
+[![20 channels](https://img.shields.io/badge/channels-20-blueviolet.svg)](#supported-notification-channels)
 
-**Get alerted on Slack, Discord, Telegram (and 17 more channels) when your GPU training crashes, goes idle, or overheats.** Single Python file. Zero dependencies. Works in the background while you sleep.
+**Get alerted on Slack, Discord, Telegram (20 notification channels total) when your GPU training crashes, goes idle, or overheats.** Single Python file. Zero dependencies. Works in the background while you sleep.
 
 ```bash
 pip install gpu-monitor
