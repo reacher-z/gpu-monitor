@@ -6,6 +6,7 @@ Supported notification channels (configure via environment variables):
   Slack, Discord, Telegram, Email (SMTP), SMS (Twilio), iMessage (macOS only),
   WeCom (企业微信), Feishu (飞书), DingTalk (钉钉), Bark (iOS push),
   ntfy (self-hosted or ntfy.sh), Gotify (self-hosted), Pushover, Microsoft Teams, Mattermost,
+  Google Chat, Zulip,
   OpenClaw (routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, etc.)
 
 Web dashboard:
@@ -103,6 +104,12 @@ PUSHOVER_TOKEN   = os.environ.get("PUSHOVER_TOKEN",   "")  # app token from push
 PUSHOVER_USER    = os.environ.get("PUSHOVER_USER",    "")  # user/group key
 TEAMS_WEBHOOK_URL      = os.environ.get("TEAMS_WEBHOOK_URL",      "")  # Microsoft Teams incoming webhook URL
 MATTERMOST_WEBHOOK_URL = os.environ.get("MATTERMOST_WEBHOOK_URL", "")  # Mattermost incoming webhook URL
+GOOGLE_CHAT_WEBHOOK_URL = os.environ.get("GOOGLE_CHAT_WEBHOOK_URL", "")  # Google Chat space webhook URL
+ZULIP_SITE     = os.environ.get("ZULIP_SITE",     "")  # e.g. https://yourorg.zulipchat.com
+ZULIP_EMAIL    = os.environ.get("ZULIP_EMAIL",    "")  # bot email
+ZULIP_API_KEY  = os.environ.get("ZULIP_API_KEY",  "")  # bot API key
+ZULIP_STREAM   = os.environ.get("ZULIP_STREAM",   "general")
+ZULIP_TOPIC    = os.environ.get("ZULIP_TOPIC",    "GPU Monitor")
 
 # GitHub Pages dashboard (optional)
 GITHUB_PAGES_TOKEN = os.environ.get("GITHUB_PAGES_TOKEN", "")
@@ -479,6 +486,49 @@ def send_bark(plain_text: str) -> bool:
         return False
 
 
+def send_google_chat(plain_text: str) -> bool:
+    """Send via Google Chat space webhook.
+
+    Create a webhook: Space → Manage webhooks.
+    Docs: https://developers.google.com/chat/how-tos/webhooks
+    """
+    if not GOOGLE_CHAT_WEBHOOK_URL:
+        return False
+    return _post_json(GOOGLE_CHAT_WEBHOOK_URL, {"text": plain_text}, label="Google Chat")
+
+
+def send_zulip(plain_text: str) -> bool:
+    """Send via Zulip bot API (https://zulip.com).
+
+    Create a bot in Zulip: Settings → Your bots → Add a new bot (Incoming webhook).
+    Docs: https://zulip.com/api/send-message
+    """
+    if not all([ZULIP_SITE, ZULIP_EMAIL, ZULIP_API_KEY]):
+        return False
+    url  = ZULIP_SITE.rstrip("/") + "/api/v1/messages"
+    creds = base64.b64encode(f"{ZULIP_EMAIL}:{ZULIP_API_KEY}".encode()).decode()
+    data = urllib.parse.urlencode({
+        "type":    "stream",
+        "to":      ZULIP_STREAM,
+        "topic":   ZULIP_TOPIC,
+        "content": plain_text,
+    }).encode()
+    try:
+        req = urllib.request.Request(
+            url, data=data,
+            headers={
+                "Authorization": f"Basic {creds}",
+                "Content-Type":  "application/x-www-form-urlencoded",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.status == 200
+    except Exception as e:
+        logger.error(f"Zulip error: {e}")
+        return False
+
+
 def send_mattermost(plain_text: str) -> bool:
     """Send via Mattermost incoming webhook (same payload format as Slack).
 
@@ -645,6 +695,8 @@ def notify(slack_text: str, color: str = "") -> None:
             send_feishu(plain)
             send_dingtalk(plain)
             send_bark(plain)
+            send_google_chat(plain)
+            send_zulip(plain)
             send_mattermost(plain)
             send_teams(plain)
             send_pushover(plain)
@@ -1288,6 +1340,8 @@ def main():
             ("Feishu",   bool(FEISHU_WEBHOOK_URL)),
             ("DingTalk", bool(DINGTALK_WEBHOOK_URL)),
             ("Bark",     bool(BARK_URL)),
+            ("Google Chat",  bool(GOOGLE_CHAT_WEBHOOK_URL)),
+            ("Zulip",       bool(ZULIP_SITE and ZULIP_EMAIL and ZULIP_API_KEY)),
             ("Mattermost", bool(MATTERMOST_WEBHOOK_URL)),
             ("Teams",    bool(TEAMS_WEBHOOK_URL)),
             ("Pushover", bool(PUSHOVER_TOKEN and PUSHOVER_USER)),

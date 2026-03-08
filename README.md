@@ -19,7 +19,7 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 - **Per-machine color** — auto-assigned color bar for multi-machine setups
 - **Uptime tracking** — shows `up 2h30m` or `idle 15min` in status
 - **Prometheus `/metrics`** — expose GPU stats for Grafana/alertmanager (requires `WEB_PORT`)
-- **16 notification channels** — Slack, Discord, Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTalk, Bark, ntfy, Gotify, Pushover, Mattermost, Teams, OpenClaw
+- **18 notification channels** — Slack, Discord, Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTalk, Bark, ntfy, Gotify, Pushover, Mattermost, Teams, Google Chat, Zulip, OpenClaw
 - **`--test-notify`** — verify all configured channels with one command
 - **Watchdog** — auto-restart on crash
 - **Log rotation** — 5MB x 3 backups
@@ -29,7 +29,7 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 | | gpu-monitor | gpustat | nvitop | wandb |
 |---|---|---|---|---|
 | Background alerts | ✅ | ❌ | ❌ | ❌ |
-| Multi-channel notifications | ✅ 16 channels | ❌ | ❌ | Slack only |
+| Multi-channel notifications | ✅ 18 channels | ❌ | ❌ | Slack only |
 | Zero dependencies | ✅ stdlib only | ❌ | ❌ | ❌ |
 | Single file deploy | ✅ | ❌ | ❌ | ❌ |
 | Prometheus `/metrics` | ✅ | ❌ | ✅ | ❌ |
@@ -55,6 +55,8 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 | **ntfy** | ntfy.sh topic URL (or self-hosted), optional auth token |
 | **Gotify** | Gotify server URL + app token (self-hosted) |
 | **Pushover** | App token + user key from pushover.net |
+| **Google Chat** | Google Chat space webhook URL |
+| **Zulip** | Site URL + bot email + API key |
 | **Mattermost** | Incoming webhook URL |
 | **Microsoft Teams** | Teams incoming webhook URL |
 | **OpenClaw** | Webhook URL + secret — routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, and [20+ more](https://openclaw.ai) |
@@ -202,6 +204,22 @@ bash start.sh status    # check if running
 |----------|-------------|
 | `PUSHOVER_TOKEN` | App API token from [pushover.net](https://pushover.net) |
 | `PUSHOVER_USER` | Your user/group key |
+
+### Google Chat
+
+| Variable | Description |
+|----------|-------------|
+| `GOOGLE_CHAT_WEBHOOK_URL` | Google Chat space webhook URL (Space → Manage webhooks) |
+
+### Zulip
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ZULIP_SITE` | Your Zulip server URL, e.g. `https://yourorg.zulipchat.com` | — |
+| `ZULIP_EMAIL` | Bot email address | — |
+| `ZULIP_API_KEY` | Bot API key | — |
+| `ZULIP_STREAM` | Stream to post to | `general` |
+| `ZULIP_TOPIC` | Topic/thread name | `GPU Monitor` |
 
 ### Mattermost
 
