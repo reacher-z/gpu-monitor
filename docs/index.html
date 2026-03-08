@@ -665,8 +665,8 @@ footer a:hover{color:var(--blue)}
               <div class="step-num">1</div>
               <div class="step-body">
                 <strong>Install</strong>
-                <code>pip install pynvml requests</code><br>
-                <code>curl -O https://raw.githubusercontent.com/reacher-z/gpu-monitor/main/gpu_monitor.py</code>
+                <code>pip install gpuwatch</code><br>
+                <span style="font-size:10px;color:var(--muted)">or download single file: <code>curl -O https://raw.githubusercontent.com/reacher-z/gpu-monitor/main/gpu_monitor.py</code></span>
               </div>
             </div>
           </li>
@@ -694,8 +694,8 @@ footer a:hover{color:var(--blue)}
               <div class="step-num">4</div>
               <div class="step-body">
                 <strong>Run on each machine</strong>
-                <code>python gpu_monitor.py</code><br>
-                Stats are pushed every 30 seconds and appear here automatically.
+                <code>gpu-monitor</code><br>
+                Stats are pushed every 30 seconds and appear here automatically. You'll see a card per machine with GPU utilization, memory, temperature, and running processes in real time.
               </div>
             </div>
           </li>
@@ -705,7 +705,7 @@ footer a:hover{color:var(--blue)}
               <div class="step-body">
                 <strong>Add Slack / Discord alerts (optional)</strong>
                 <code>export SLACK_WEBHOOK_URL=https://hooks.slack.com/...</code><br>
-                Run <code>python gpu_monitor.py --channels</code> to see all 20 options.
+                Run <code>gpu-monitor --channels</code> to see all 20 options.
               </div>
             </div>
           </li>
