@@ -19,7 +19,8 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 - **Per-machine color** — auto-assigned color bar for multi-machine setups
 - **Uptime tracking** — shows `up 2h30m` or `idle 15min` in status
 - **Prometheus `/metrics`** — expose GPU stats for Grafana/alertmanager (requires `WEB_PORT`)
-- **19 notification channels** — Slack, Discord, Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTalk, Bark, Rocket.Chat, ntfy, Gotify, Pushover, Mattermost, Teams, Google Chat, Zulip, OpenClaw
+- **19 notification channels** — Slack, Discord, Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTalk, Bark, Rocket.Chat, ntfy, Gotify, Pushover, Mattermost, Teams, Google Chat, Zulip, OpenClaw (+ **80+ more via [Apprise](https://github.com/caronc/apprise)**)
+- **Memory leak detection** — alert when GPU memory grows unexpectedly without process changes
 - **`--test-notify`** — verify all configured channels with one command
 - **Watchdog** — auto-restart on crash
 - **Log rotation** — 5MB x 3 backups
@@ -161,6 +162,9 @@ Not configured:           Telegram, Email, SMS, iMessage, WeCom, Feishu, DingTal
 | `MACHINE_COLOR` | auto | Hex color for Slack/Discord |
 | `LOG_FILE` | — | Log file path (enables rotation) |
 | `WEB_PORT` | — | Local dashboard + `/metrics` port (disabled if unset) |
+| `APPRISE_URLS` | — | Space/comma-separated [Apprise](https://github.com/caronc/apprise) URLs (optional, `pip install apprise`) |
+| `MEMLEAK_THRESHOLD` | `30` | GPU memory growth % to trigger leak alert |
+| `MEMLEAK_MINUTES` | `10` | Window (minutes) for memory leak detection |
 
 ### Slack
 

@@ -6,7 +6,7 @@ Supported notification channels (configure via environment variables):
   Slack, Discord, Telegram, Email (SMTP), SMS (Twilio), iMessage (macOS only),
   WeCom (企业微信), Feishu (飞书), DingTalk (钉钉), Bark (iOS push),
   ntfy (self-hosted or ntfy.sh), Gotify (self-hosted), Pushover, Microsoft Teams, Mattermost,
-  Google Chat, Zulip, Rocket.Chat,
+  Google Chat, Zulip, Rocket.Chat, Apprise (optional — 80+ extra services via pip install apprise),
   OpenClaw (routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, etc.)
 
 Web dashboard:
@@ -111,6 +111,13 @@ ZULIP_API_KEY  = os.environ.get("ZULIP_API_KEY",  "")  # bot API key
 ZULIP_STREAM   = os.environ.get("ZULIP_STREAM",   "general")
 ZULIP_TOPIC    = os.environ.get("ZULIP_TOPIC",    "GPU Monitor")
 ROCKETCHAT_WEBHOOK_URL = os.environ.get("ROCKETCHAT_WEBHOOK_URL", "")  # Rocket.Chat incoming webhook URL
+# Apprise — optional, requires: pip install apprise
+# Set APPRISE_URLS to a space/comma-separated list of Apprise-format URLs
+# Examples: "slack://token/channel", "tgram://bot_token/chat_id", "json://your-host/"
+APPRISE_URLS = os.environ.get("APPRISE_URLS", "")  # space or comma-separated Apprise URLs
+# Memory leak detection
+MEMLEAK_THRESHOLD = int(os.environ.get("MEMLEAK_THRESHOLD", "30"))  # % growth to trigger alert
+MEMLEAK_MINUTES   = int(os.environ.get("MEMLEAK_MINUTES",   "10"))  # window to check
 
 # GitHub Pages dashboard (optional)
 GITHUB_PAGES_TOKEN = os.environ.get("GITHUB_PAGES_TOKEN", "")
@@ -487,6 +494,36 @@ def send_bark(plain_text: str) -> bool:
         return False
 
 
+def send_apprise(plain_text: str) -> bool:
+    """Send via Apprise (https://github.com/caronc/apprise) — 80+ notification services.
+
+    Optional: requires `pip install apprise`. If not installed, silently skipped.
+    Set APPRISE_URLS to a space/comma-separated list of Apprise-format URLs.
+    Examples:
+      APPRISE_URLS="slack://token/channel tgram://bot_token/chat_id"
+    Docs: https://github.com/caronc/apprise/wiki
+    """
+    if not APPRISE_URLS:
+        return False
+    try:
+        import apprise  # type: ignore[import]
+    except ImportError:
+        logger.debug("Apprise not installed — skipping (pip install apprise to enable)")
+        return False
+    try:
+        lines = plain_text.strip().splitlines()
+        title = lines[0] if lines else "GPU Monitor"
+        body  = "\n".join(lines[1:]) if len(lines) > 1 else plain_text
+        ap = apprise.Apprise()
+        for url in re.split(r"[,\s]+", APPRISE_URLS.strip()):
+            if url:
+                ap.add(url)
+        return ap.notify(body=body, title=title)
+    except Exception as e:
+        logger.error(f"Apprise error: {e}")
+        return False
+
+
 def send_rocketchat(plain_text: str) -> bool:
     """Send via Rocket.Chat incoming webhook.
 
@@ -707,6 +744,7 @@ def notify(slack_text: str, color: str = "") -> None:
             send_feishu(plain)
             send_dingtalk(plain)
             send_bark(plain)
+            send_apprise(plain)
             send_rocketchat(plain)
             send_google_chat(plain)
             send_zulip(plain)
@@ -1176,6 +1214,9 @@ def monitor():
     partial_alerted  = False
     # Track PIDs from previous iteration for crash detection
     prev_pids: set[str] = set()
+    # Memory leak detection: {gpu_idx: [(timestamp, mem_used_mib), ...]}
+    _mem_history: dict[int, list] = {}
+    _memleak_alerted: set[int] = set()
 
     channels = [c for c, v in [
         ("Slack",        SLACK_WEBHOOK_URL),
@@ -1188,6 +1229,7 @@ def monitor():
         ("Feishu",       FEISHU_WEBHOOK_URL),
         ("DingTalk",     DINGTALK_WEBHOOK_URL),
         ("Bark",         BARK_URL),
+        ("Apprise",      APPRISE_URLS),
         ("Rocket.Chat",  ROCKETCHAT_WEBHOOK_URL),
         ("ntfy",         NTFY_URL),
         ("Gotify",       GOTIFY_URL and GOTIFY_TOKEN),
@@ -1319,6 +1361,34 @@ def monitor():
             cur_procs = get_procs()
             prev_pids = {p["pid"] for plist in cur_procs.values() for p in plist}
 
+        # --- Memory leak detection (runs regardless of idle/busy state) ---
+        if MEMLEAK_THRESHOLD > 0:
+            memleak_window = MEMLEAK_MINUTES * 60
+            for g in gpus:
+                idx = g["idx"]
+                hist = _mem_history.setdefault(idx, [])
+                hist.append((now, g["mem_used"]))
+                # Prune entries older than window
+                hist[:] = [(t, m) for t, m in hist if now - t <= memleak_window]
+                if len(hist) < 3:
+                    continue
+                oldest_mem = hist[0][1]
+                latest_mem = hist[-1][1]
+                if oldest_mem == 0:
+                    continue
+                growth_pct = (latest_mem - oldest_mem) / oldest_mem * 100
+                proc_count_now = len(get_procs().get(idx, []))
+                if growth_pct >= MEMLEAK_THRESHOLD and proc_count_now > 0 and idx not in _memleak_alerted:
+                    logger.warning(f"GPU{idx}: memory grew {growth_pct:.0f}% over {MEMLEAK_MINUTES}min ({oldest_mem}→{latest_mem} MiB) — possible leak")
+                    notify(
+                        f":warning: *GPU{idx} memory leak?* — grew {growth_pct:.0f}% in {MEMLEAK_MINUTES}min "
+                        f"({oldest_mem}→{latest_mem} MiB) | " + format_status(gpus, get_procs()),
+                        color="#ecb22e",
+                    )
+                    _memleak_alerted.add(idx)
+                elif growth_pct < MEMLEAK_THRESHOLD / 2:
+                    _memleak_alerted.discard(idx)  # reset when growth subsides
+
         time.sleep(CHECK_INTERVAL)
 
 
@@ -1399,6 +1469,7 @@ def main():
             ("Feishu",   bool(FEISHU_WEBHOOK_URL)),
             ("DingTalk", bool(DINGTALK_WEBHOOK_URL)),
             ("Bark",     bool(BARK_URL)),
+            ("Apprise",      bool(APPRISE_URLS)),
             ("Rocket.Chat",  bool(ROCKETCHAT_WEBHOOK_URL)),
             ("Google Chat",  bool(GOOGLE_CHAT_WEBHOOK_URL)),
             ("Zulip",       bool(ZULIP_SITE and ZULIP_EMAIL and ZULIP_API_KEY)),
