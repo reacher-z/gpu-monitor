@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use gpu-monitor in your research, please cite it as below."
+type: software
+title: "gpu-monitor"
+abstract: >
+  A lightweight, single-file NVIDIA GPU monitor with zero dependencies.
+  Supports 15 notification channels (Slack, Discord, Telegram, Email, SMS,
+  WeCom, Feishu, DingTalk, Bark, ntfy, Gotify, Pushover, Microsoft Teams,
+  OpenClaw, iMessage), Prometheus metrics, process crash detection, and a
+  real-time GitHub Pages dashboard for multi-machine setups.
+authors:
+  - alias: reacher-z
+    name: "reacher-z"
+repository-code: "https://github.com/reacher-z/gpu-monitor"
+url: "https://github.com/reacher-z/gpu-monitor"
+license: MIT
+version: "0.3.0"
+date-released: "2026-03-07"
+keywords:
+  - GPU monitoring
+  - NVIDIA
+  - machine learning
+  - deep learning
+  - Prometheus
+  - notifications
+  - Slack
+  - Discord
+  - Telegram
