@@ -5,13 +5,15 @@ Lightweight GPU Monitor with multi-channel notifications and web dashboard.
 Supported notification channels (configure via environment variables):
   Slack, Discord, Telegram, Email (SMTP), SMS (Twilio), iMessage (macOS only),
   WeCom (企业微信), Feishu (飞书), DingTalk (钉钉), Bark (iOS push),
-  ntfy (self-hosted or ntfy.sh), Gotify (self-hosted), Pushover, Microsoft Teams,
+  ntfy (self-hosted or ntfy.sh), Gotify (self-hosted), Pushover, Microsoft Teams, Mattermost,
   OpenClaw (routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, etc.)
 
 Web dashboard:
   Set WEB_PORT=8080 (or any port) to enable the real-time GPU dashboard.
   Then open http://localhost:8080 in your browser.
 """
+
+__version__ = "0.3.0"
 
 import argparse
 import base64
@@ -99,7 +101,8 @@ GOTIFY_URL   = os.environ.get("GOTIFY_URL",   "")  # e.g. http://gotify.example.
 GOTIFY_TOKEN = os.environ.get("GOTIFY_TOKEN", "")  # app token from Gotify
 PUSHOVER_TOKEN   = os.environ.get("PUSHOVER_TOKEN",   "")  # app token from pushover.net
 PUSHOVER_USER    = os.environ.get("PUSHOVER_USER",    "")  # user/group key
-TEAMS_WEBHOOK_URL = os.environ.get("TEAMS_WEBHOOK_URL", "")  # Microsoft Teams incoming webhook URL
+TEAMS_WEBHOOK_URL      = os.environ.get("TEAMS_WEBHOOK_URL",      "")  # Microsoft Teams incoming webhook URL
+MATTERMOST_WEBHOOK_URL = os.environ.get("MATTERMOST_WEBHOOK_URL", "")  # Mattermost incoming webhook URL
 
 # GitHub Pages dashboard (optional)
 GITHUB_PAGES_TOKEN = os.environ.get("GITHUB_PAGES_TOKEN", "")
@@ -476,6 +479,17 @@ def send_bark(plain_text: str) -> bool:
         return False
 
 
+def send_mattermost(plain_text: str) -> bool:
+    """Send via Mattermost incoming webhook (same payload format as Slack).
+
+    Create a webhook in Mattermost: Main Menu → Integrations → Incoming Webhooks.
+    Docs: https://developers.mattermost.com/integrate/webhooks/incoming/
+    """
+    if not MATTERMOST_WEBHOOK_URL:
+        return False
+    return _post_json(MATTERMOST_WEBHOOK_URL, {"text": plain_text}, label="Mattermost")
+
+
 def send_teams(plain_text: str) -> bool:
     """Send via Microsoft Teams incoming webhook (Adaptive Card format).
 
@@ -631,6 +645,7 @@ def notify(slack_text: str, color: str = "") -> None:
             send_feishu(plain)
             send_dingtalk(plain)
             send_bark(plain)
+            send_mattermost(plain)
             send_teams(plain)
             send_pushover(plain)
             send_gotify(plain)
@@ -1245,6 +1260,7 @@ def run_with_watchdog(target):
 def main():
     global WEB_PORT
     parser = argparse.ArgumentParser(description="Lightweight GPU Monitor")
+    parser.add_argument("--version",     action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--once",        action="store_true", help="Print status and exit")
     parser.add_argument("--test-notify", action="store_true", help="Send a test notification to all configured channels and exit")
     parser.add_argument("--web",  type=int, metavar="PORT", default=0,
@@ -1272,6 +1288,7 @@ def main():
             ("Feishu",   bool(FEISHU_WEBHOOK_URL)),
             ("DingTalk", bool(DINGTALK_WEBHOOK_URL)),
             ("Bark",     bool(BARK_URL)),
+            ("Mattermost", bool(MATTERMOST_WEBHOOK_URL)),
             ("Teams",    bool(TEAMS_WEBHOOK_URL)),
             ("Pushover", bool(PUSHOVER_TOKEN and PUSHOVER_USER)),
             ("Gotify",   bool(GOTIFY_URL and GOTIFY_TOKEN)),

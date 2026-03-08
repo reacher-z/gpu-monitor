@@ -27,7 +27,7 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 | | gpu-monitor | gpustat | nvitop | wandb |
 |---|---|---|---|---|
 | Background alerts | ✅ | ❌ | ❌ | ❌ |
-| Multi-channel notifications | ✅ 15 channels | ❌ | ❌ | Slack only |
+| Multi-channel notifications | ✅ 16 channels | ❌ | ❌ | Slack only |
 | Zero dependencies | ✅ stdlib only | ❌ | ❌ | ❌ |
 | Single file deploy | ✅ | ❌ | ❌ | ❌ |
 | Prometheus `/metrics` | ✅ | ❌ | ✅ | ❌ |
@@ -53,6 +53,7 @@ Lightweight NVIDIA GPU monitor with multi-channel alerts. Single Python file, no
 | **ntfy** | ntfy.sh topic URL (or self-hosted), optional auth token |
 | **Gotify** | Gotify server URL + app token (self-hosted) |
 | **Pushover** | App token + user key from pushover.net |
+| **Mattermost** | Incoming webhook URL |
 | **Microsoft Teams** | Teams incoming webhook URL |
 | **OpenClaw** | Webhook URL + secret — routes to WhatsApp, Teams, Signal, LINE, Mattermost, Matrix, Zalo, and [20+ more](https://openclaw.ai) |
 
@@ -199,6 +200,12 @@ bash start.sh status    # check if running
 |----------|-------------|
 | `PUSHOVER_TOKEN` | App API token from [pushover.net](https://pushover.net) |
 | `PUSHOVER_USER` | Your user/group key |
+
+### Mattermost
+
+| Variable | Description |
+|----------|-------------|
+| `MATTERMOST_WEBHOOK_URL` | Mattermost incoming webhook URL (Main Menu → Integrations → Incoming Webhooks) |
 
 ### Microsoft Teams
 
